@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADMDPART — Sistema de Alquileres</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#FFFBF4;--bg2:#FFF5E6;--bg3:#FAEBD7;
+  --tx:#3B2A1A;--tx2:#8B6347;--tx3:#C4A882;
+  --bd:rgba(160,100,40,.13);--bd2:rgba(160,100,40,.25);
+  --blue:#FFF8EE;--bluetx:#B85C00;--bluebg:#D97B2E;
+  --green:#F0F7E6;--greentx:#4A7C1F;
+  --amber:#FFF0D4;--ambertx:#A05A00;
+  --red:#FFF0EE;--redtx:#B83232;
+  --gray:#FAF2E8;--graytx:#8B6347;
+  --sidebar:#FFF8F0;
+  --r:10px;--rl:14px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--tx);font-size:14px;min-height:100vh}
+.app{display:flex;height:100vh;overflow:hidden}
+/* sidebar */
+.sb{width:220px;min-width:220px;background:var(--sidebar);border-right:.5px solid var(--bd);display:flex;flex-direction:column;overflow-y:auto}
+.logo{padding:1rem 1.1rem;border-bottom:.5px solid var(--bd);display:flex;align-items:center;gap:9px}
+.logo-ic{width:32px;height:32px;background:linear-gradient(135deg,#E8873A,#C85E1A);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;flex-shrink:0;box-shadow:0 2px 8px rgba(200,94,26,.30)}
+.logo h2{font-size:14px;font-weight:700;color:var(--tx)}
+.logo p{font-size:10px;color:var(--tx2)}
+.ns{padding:.6rem .4rem .2rem}
+.nl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);padding:0 .7rem;margin-bottom:3px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px .7rem;border-radius:var(--r);cursor:pointer;font-size:13px;color:var(--tx2);transition:all .12s;user-select:none}
+.ni:hover{background:var(--bg2);color:var(--tx)}
+.ni.active{background:linear-gradient(135deg,#FFF0DC,#FFE4C0);color:#B85C00;font-weight:600;border-left:3px solid #D97B2E;padding-left:calc(.7rem - 3px)}
+.ni i{font-size:15px}
+.conn-dot{margin-top:auto;padding:.6rem 1rem;font-size:11px;color:var(--tx3);border-top:.5px solid var(--bd)}
+/* main */
+.main{flex:1;overflow-y:auto;padding:1.4rem 1.6rem}
+.page{display:none}.page.active{display:block}
+.ph{margin-bottom:1.25rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+.ph h1{font-size:19px;font-weight:600;letter-spacing:-.4px}
+.ph p{font-size:12px;color:var(--tx2);margin-top:2px}
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--r);border:.5px solid var(--bd2);background:var(--bg);color:var(--tx);font-size:13px;cursor:pointer;transition:all .12s;font-family:inherit}
+.btn:hover{background:var(--bg2)}.btn:active{transform:scale(.98)}
+.btn.pri{background:linear-gradient(135deg,#E8873A,#C85E1A);color:#fff;border-color:transparent;box-shadow:0 2px 8px rgba(200,94,26,.28)}.btn.pri:hover{opacity:.90}
+.btn.suc{background:linear-gradient(135deg,#6BAA2A,#4E8010);color:#fff;border-color:transparent}
+.btn.dan{background:var(--red);color:var(--redtx);border-color:transparent}
+.btn.sm{padding:3px 9px;font-size:12px}
+.btn.xs{padding:2px 7px;font-size:11px}
+/* metrics */
+.mg{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1.25rem}
+.mt{background:var(--bg);border:.5px solid var(--bd);border-radius:var(--r);padding:.85rem;border-top:3px solid #E8873A}
+.mt-l{font-size:11px;color:var(--tx2);margin-bottom:3px;font-weight:500}
+.mt-v{font-size:21px;font-weight:700;letter-spacing:-.4px;color:var(--tx)}
+.mt-s{font-size:11px;color:var(--tx3);margin-top:2px}
+/* cards */
+.card{background:var(--bg);border:.5px solid var(--bd);border-radius:var(--rl);padding:.9rem 1.1rem;margin-bottom:.9rem;box-shadow:0 1px 4px rgba(160,100,40,.06)}
+.card h3{font-size:13px;font-weight:600;margin-bottom:.85rem;display:flex;align-items:center;gap:6px;color:var(--tx2)}
+/* table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--tx2);border-bottom:.5px solid var(--bd);font-weight:600;background:var(--bg2)}
+td{padding:9px 10px;border-bottom:.5px solid var(--bd)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#FFF8F0}
+/* badge */
+.bdg{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.bdg.green{background:#EDF7DC;color:#3D6E10}
+.bdg.amber{background:#FFF0D4;color:#A05A00}
+.bdg.red{background:#FFF0EE;color:#B83232}
+.bdg.blue{background:#FFF8EE;color:#B85C00}
+.bdg.gray{background:#FAF2E8;color:#7A5A3A}
+/* forms */
+input,select,textarea{width:100%;padding:8px 10px;border:.5px solid var(--bd2);border-radius:var(--r);font-size:13px;background:var(--bg);color:var(--tx);outline:none;font-family:inherit;transition:border .12s}
+input:focus,select:focus,textarea:focus{border-color:#D97B2E;box-shadow:0 0 0 3px rgba(217,123,46,.12)}
+input[readonly]{background:var(--bg2);color:var(--tx2)}
+label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
+.fg{margin-bottom:10px}
+.fg.full{grid-column:1/-1}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+/* modal */
+.mo{display:none;position:fixed;inset:0;background:rgba(50,30,10,.40);z-index:1000;align-items:center;justify-content:center;padding:1rem}
+.mo.open{display:flex}
+.mbox{background:var(--bg);border-radius:var(--rl);padding:1.4rem;width:620px;max-width:100%;max-height:90vh;overflow-y:auto;border:.5px solid var(--bd);box-shadow:0 8px 32px rgba(100,60,10,.15)}
+.mbox h2{font-size:15px;font-weight:700;margin-bottom:1.1rem;display:flex;align-items:center;gap:7px;color:var(--tx)}
+.mac{display:flex;gap:7px;justify-content:flex-end;margin-top:1rem;padding-top:.9rem;border-top:.5px solid var(--bd)}
+/* alert */
+.al{padding:.7rem 1rem;border-radius:var(--r);font-size:13px;margin-bottom:.65rem;display:flex;align-items:flex-start;gap:7px;line-height:1.5}
+.al.warn{background:#FFF5DC;color:#8A5A00;border:.5px solid #F5D890}
+.al.dan{background:#FFF0EE;color:#B83232;border:.5px solid #F5C0BC}
+.al.info{background:#FFF8EE;color:#B85C00;border:.5px solid #F5D8B0}
+.al.suc{background:#EDF7DC;color:#3D6E10;border:.5px solid #B8E080}
+/* dept cards */
+.dg{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px}
+.dc{background:var(--bg);border:.5px solid var(--bd);border-radius:var(--rl);padding:.9rem;cursor:pointer;transition:all .15s;border-top:3px solid #E8873A}
+.dc:hover{border-color:#D97B2E;box-shadow:0 3px 12px rgba(200,94,26,.12);transform:translateY(-1px)}
+/* section title */
+.stl{font-size:11px;font-weight:600;color:var(--tx3);margin:1rem 0 .4rem;text-transform:uppercase;letter-spacing:.06em;border-bottom:.5px solid var(--bd);padding-bottom:3px}
+/* loading */
+.ld{display:flex;align-items:center;gap:7px;color:var(--tx2);font-size:13px;padding:.4rem 0}
+.sp{width:14px;height:14px;border:2px solid var(--bd);border-top-color:var(--bluebg);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* serv dist rows */
+.dr{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:.5px solid var(--bd)}
+.dr:last-child{border-bottom:none}
+.dr .dn{width:55px;font-weight:500;font-size:13px;flex-shrink:0}
+.dr input{flex:1}
+/* receipt */
+@media print{
+  .sb,.ph,.mac,.btn,.al,.mo-print-hide{display:none!important}
+  .main{padding:0}.page{display:block!important}
+  body{background:#fff;color:#000}
+  .card{border:none;padding:0}
+}
+.rcpt{background:#fff;border:1px solid #ddd;border-radius:8px;padding:1.5rem;color:#111;font-family:'Georgia',serif;max-width:520px;margin:0 auto}
+.rcpt-hdr{text-align:center;padding-bottom:1rem;margin-bottom:1rem;border-bottom:2px solid #222}
+.rcpt-title{font-size:21px;font-weight:bold;letter-spacing:3px}
+.rcpt-sub{font-size:12px;color:#555;margin-top:3px}
+.rcpt table{font-family:'Georgia',serif;font-size:13px}
+.rcpt td{padding:5px 5px}
+.tr-tot td{font-weight:bold;border-top:1px solid #555;padding-top:8px;font-size:15px}
+/* tabs */
+.tabs{display:flex;gap:2px;margin-bottom:1rem;border-bottom:.5px solid var(--bd)}
+.tab{padding:6px 14px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-.5px;color:var(--tx2)}
+.tab.active{color:var(--bluetx);border-bottom-color:var(--bluebg)}
+.tbc{display:none}.tbc.active{display:block}
+/* venc boleta */
+.vb-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:.5px solid var(--bd);font-size:13px}
+.vb-row:last-child{border-bottom:none}
+
+/* ── TABLET & MOBILE ─────────────────────────────── */
+@media(max-width:900px){
+  /* sidebar se convierte en barra inferior */
+  .app{flex-direction:column}
+  .sb{width:100%;min-width:unset;height:auto;border-right:none;border-bottom:.5px solid var(--bd);flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:0;position:fixed;bottom:0;left:0;right:0;z-index:500;box-shadow:0 -2px 12px rgba(100,60,10,.10)}
+  .logo{display:none}
+  .ns{display:flex;flex-direction:row;padding:0;gap:0;flex:1}
+  .nl{display:none}
+  .ni{flex-direction:column;gap:3px;padding:8px 6px 6px;border-radius:0;font-size:10px;min-width:60px;text-align:center;flex:1;border-left:none;color:var(--tx2)}
+  .ni i{font-size:20px}
+  .ni.active{background:linear-gradient(180deg,#FFF0DC,#FFE4C0);color:#B85C00;border-left:none;border-top:3px solid #D97B2E;padding-top:5px}
+  .conn-dot{display:none}
+  /* main gets bottom padding for nav bar */
+  .main{padding:1rem;padding-bottom:80px}
+  /* page header stacks */
+  .ph{flex-direction:column;gap:.5rem}
+  .ph>div:last-child{display:flex;flex-wrap:wrap;gap:6px}
+  /* grids become 2 cols on tablet */
+  .mg{grid-template-columns:repeat(2,1fr)}
+  .fg2{grid-template-columns:1fr}
+  .fg3{grid-template-columns:1fr 1fr}
+  /* dashboard 3-col becomes 1-col */
+  #page-dashboard > div[style*="grid-template-columns:1fr 1fr 1fr"]{
+    display:grid!important;grid-template-columns:1fr!important
+  }
+  /* dept grid 2 cols */
+  .dg{grid-template-columns:repeat(2,1fr)}
+  /* modals full width */
+  .mbox{width:100%!important;max-width:100%!important;margin:.5rem;border-radius:var(--rl)}
+  /* tables scroll horizontally */
+  .card{overflow-x:auto}
+  table{min-width:520px}
+  /* tabs bigger touch target */
+  .tab{padding:10px 16px;font-size:14px}
+}
+
+@media(max-width:600px){
+  .mg{grid-template-columns:1fr 1fr}
+  .fg3{grid-template-columns:1fr}
+  .dg{grid-template-columns:1fr 1fr}
+  .ni{min-width:50px;font-size:9px;padding:7px 4px 5px}
+  .ni i{font-size:19px}
+  /* hide text labels on very small screens, show only icons */
+  .ni span.nav-txt{display:none}
+  .btn{font-size:12px;padding:7px 10px}
+  .btn.sm{padding:5px 8px;font-size:12px}
+  th{font-size:10px;padding:6px 7px}
+  td{padding:7px 7px;font-size:12px}
+}
+
+/* bigger touch targets throughout on touch devices */
+@media(pointer:coarse){
+  .btn{min-height:40px;padding:9px 16px}
+  .btn.sm{min-height:34px}
+  input,select,textarea{min-height:42px;font-size:15px}
+  .ni{min-height:56px}
+  .bdg{padding:4px 10px;font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sb">
+  <div class="logo">
+    <div class="logo-ic"><i class="ti ti-building"></i></div>
+    <div><h2>ADMDPART</h2><p>Sistema de Alquileres</p></div>
+  </div>
+  <div class="ns">
+    <div class="nl">Principal</div>
+    <div class="ni active" onclick="showPage('dashboard',this)"><i class="ti ti-dashboard"></i> <span class="nav-txt">Dashboard</span></div>
+    <div class="ni" onclick="showPage('departamentos',this)"><i class="ti ti-building-skyscraper"></i> <span class="nav-txt">Deptos</span></div>
+    <div class="ni" onclick="showPage('inquilinos',this)"><i class="ti ti-users"></i> <span class="nav-txt">Inquilinos</span></div>
+    <div class="ni" onclick="showPage('contratos',this)"><i class="ti ti-file-text"></i> <span class="nav-txt">Contratos</span></div>
+  </div>
+  <div class="ns">
+    <div class="nl">Finanzas</div>
+    <div class="ni" onclick="showPage('servicios',this)"><i class="ti ti-bolt"></i> <span class="nav-txt">Servicios</span></div>
+    <div class="ni" onclick="showPage('cobros',this)"><i class="ti ti-receipt"></i> <span class="nav-txt">Cobros</span></div>
+    <div class="ni" onclick="showPage('pagos',this)"><i class="ti ti-circle-check"></i> <span class="nav-txt">Pagos</span></div>
+    <div class="ni" onclick="showPage('mantenimiento',this)"><i class="ti ti-tools"></i> <span class="nav-txt">Manten.</span></div>
+  </div>
+  <div class="ns">
+    <div class="nl">Sistema</div>
+    <div class="ni" onclick="pedirClave(this)"><i class="ti ti-settings"></i> <span class="nav-txt">Config. 🔒</span></div>
+  </div>
+  <div class="conn-dot" id="conn-status">⚪ Sin conexión Supabase</div>
+</aside>
+
+<main class="main">
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div class="ph"><div><h1>Dashboard</h1><p id="dash-sub">Resumen general</p></div>
+    <button class="btn pri" onclick="showPage('cobros',null)"><i class="ti ti-receipt"></i> Ver Cobros</button>
+  </div>
+  <div id="setup-warn"></div>
+  <div id="alerts-box"></div>
+  <div class="mg">
+    <div class="mt"><div class="mt-l">Departamentos</div><div class="mt-v" id="m-depts">—</div></div>
+    <div class="mt"><div class="mt-l">Ocupados</div><div class="mt-v" id="m-ocup">—</div><div class="mt-s" id="m-pct"></div></div>
+    <div class="mt"><div class="mt-l">Contratos activos</div><div class="mt-v" id="m-cont">—</div></div>
+    <div class="mt"><div class="mt-l">Vencen en 30d</div><div class="mt-v" id="m-venc" style="color:var(--ambertx)">—</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.9rem">
+    <div class="card">
+      <h3><i class="ti ti-calendar-event" style="color:var(--bluetx)"></i> Contratos próx. vencer</h3>
+      <div id="dash-venc"></div>
+    </div>
+    <div class="card">
+      <h3><i class="ti ti-bolt" style="color:var(--ambertx)"></i> Venc. boletas servicios</h3>
+      <div id="dash-boletas"></div>
+    </div>
+    <div class="card">
+      <h3><i class="ti ti-circle-check" style="color:var(--greentx)"></i> Estado pagos del mes</h3>
+      <div id="dash-pagos"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3><i class="ti ti-building-skyscraper" style="color:var(--greentx)"></i> Departamentos</h3>
+    <div id="dash-dg" class="dg"></div>
+  </div>
+</div>
+
+<!-- DEPARTAMENTOS -->
+<div id="page-departamentos" class="page">
+  <div class="ph"><div><h1>Departamentos</h1><p>Unidades del edificio</p></div>
+    <button class="btn pri" onclick="abrirDept()"><i class="ti ti-plus"></i> Nuevo Dpto.</button>
+  </div>
+  <div class="card"><div id="tbl-depts"><div class="ld"><span class="sp"></span>Cargando...</div></div></div>
+</div>
+
+<!-- INQUILINOS -->
+<div id="page-inquilinos" class="page">
+  <div class="ph"><div><h1>Inquilinos</h1><p>Datos y documentación</p></div>
+    <button class="btn pri" onclick="abrirInq()"><i class="ti ti-plus"></i> Nuevo Inquilino</button>
+  </div>
+  <div class="card"><div id="tbl-inqs"><div class="ld"><span class="sp"></span>Cargando...</div></div></div>
+</div>
+
+<!-- CONTRATOS -->
+<div id="page-contratos" class="page">
+  <div class="ph"><div><h1>Contratos</h1><p>Alquileres, renovaciones y ajustes</p></div>
+    <button class="btn pri" onclick="abrirCont()"><i class="ti ti-plus"></i> Nuevo Contrato</button>
+  </div>
+  <div class="al info"><i class="ti ti-info-circle"></i> Contratos próximos a vencer aparecen en amarillo. Usá el botón <strong>%</strong> para aplicar aumento.</div>
+  <div class="card"><div id="tbl-conts"><div class="ld"><span class="sp"></span>Cargando...</div></div></div>
+</div>
+
+<!-- SERVICIOS -->
+<div id="page-servicios" class="page">
+  <div class="ph"><div><h1>Servicios</h1><p>Boletas de Luz · Gas · Agua</p></div>
+    <button class="btn pri" onclick="abrirServ()"><i class="ti ti-plus"></i> Cargar Boleta</button>
+  </div>
+  <div class="mg">
+    <div class="mt"><div class="mt-l">⚡ Luz total</div><div class="mt-v" id="tot-luz">$0</div></div>
+    <div class="mt"><div class="mt-l">🔥 Gas total</div><div class="mt-v" id="tot-gas">$0</div></div>
+    <div class="mt"><div class="mt-l">💧 Agua total</div><div class="mt-v" id="tot-agua">$0</div></div>
+  </div>
+  <div class="card"><div id="tbl-servs"><div class="ld"><span class="sp"></span>Cargando...</div></div></div>
+</div>
+
+<!-- COBROS -->
+<div id="page-cobros" class="page">
+  <div class="ph">
+    <div><h1>Cobros del mes</h1><p id="cobros-per">Detalle por departamento</p></div>
+    <div style="display:flex;gap:7px">
+      <button class="btn" onclick="renderCobros()"><i class="ti ti-refresh"></i> Recalcular</button>
+      <button class="btn suc" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir todo</button>
+    </div>
+  </div>
+  <div class="card"><div id="tbl-cobros"><div class="ld"><span class="sp"></span>Calculando...</div></div></div>
+</div>
+
+<!-- PAGOS -->
+<div id="page-pagos" class="page">
+  <div class="ph"><div><h1>Registro de Pagos</h1><p>Seguimiento mensual por departamento</p></div></div>
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:1rem">
+    <label style="margin:0;white-space:nowrap">Período:</label>
+    <input type="month" id="pagos-periodo" style="width:160px" onchange="renderPagos()">
+  </div>
+  <div class="card"><div id="tbl-pagos"><div class="ld"><span class="sp"></span>Cargando...</div></div></div>
+</div>
+
+<!-- MANTENIMIENTO -->
+<div id="page-mantenimiento" class="page">
+  <div class="ph"><div><h1>Mantenimiento</h1><p>Reparaciones, gastos y tareas pendientes</p></div>
+    <div style="display:flex;gap:7px">
+      <button class="btn" onclick="abrirTarea()"><i class="ti ti-clock-plus"></i> Tarea pendiente</button>
+      <button class="btn pri" onclick="abrirMant()"><i class="ti ti-plus"></i> Registrar Gasto</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('mant','pendientes',this)">⏳ Pendientes</div>
+    <div class="tab" onclick="switchTab('mant','todos',this)">✅ Historial</div>
+    <div class="tab" onclick="switchTab('mant','por-dept',this)">Por departamento</div>
+  </div>
+  <div id="mant-pendientes" class="tbc active">
+    <div class="card"><div id="tbl-mant-pend"><div class="ld"><span class="sp"></span>Cargando...</div></div></div>
+  </div>
+  <div id="mant-todos" class="tbc">
+    <div class="card"><div id="tbl-mant-all"><div class="ld"><span class="sp"></span>Cargando...</div></div></div>
+  </div>
+  <div id="mant-por-dept" class="tbc">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:1rem">
+      <label style="margin:0;white-space:nowrap">Departamento:</label>
+      <select id="mant-filter-dept" style="width:200px" onchange="renderMantDept()">
+        <option value="">Seleccionar...</option>
+      </select>
+    </div>
+    <div class="card"><div id="tbl-mant-dept"><p style="color:var(--tx2);font-size:13px">Seleccioná un departamento.</p></div></div>
+  </div>
+</div>
+
+<!-- CONFIGURACIÓN -->
+<div id="page-configuracion" class="page">
+  <div class="ph"><div><h1>Configuración</h1><p>Datos del edificio y Supabase</p></div></div>
+  <div class="card">
+    <h3><i class="ti ti-database" style="color:var(--greentx)"></i> Conexión Supabase</h3>
+    <div class="al suc" style="margin-bottom:.9rem"><i class="ti ti-circle-check"></i> <strong>Conexión integrada y activa.</strong> Esta app ya está conectada permanentemente a tu base de datos Supabase.</div>
+    <div style="display:flex;gap:7px">
+      <button class="btn" onclick="testConn()"><i class="ti ti-wifi"></i> Probar conexión</button>
+    </div>
+    <div id="conn-res" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h3><i class="ti ti-building"></i> Datos del edificio</h3>
+    <div class="fg2">
+      <div class="fg"><label>Nombre</label><input id="cfg-nombre" type="text" placeholder="Edificio Los Alamos"></div>
+      <div class="fg"><label>Dirección</label><input id="cfg-dir" type="text" placeholder="Av. Corrientes 1234, CABA"></div>
+      <div class="fg"><label>CUIT</label><input id="cfg-cuit" type="text" placeholder="20-12345678-9"></div>
+      <div class="fg"><label>Teléfono</label><input id="cfg-tel" type="text" placeholder="+54 11 1234-5678"></div>
+    </div>
+    <button class="btn pri" style="margin-top:6px" onclick="guardarCfg()"><i class="ti ti-check"></i> Guardar</button>
+  </div>
+</div>
+</main>
+</div>
+
+<!-- ===== MODAL DEPARTAMENTO ===== -->
+<div class="mo" id="mo-dept">
+<div class="mbox" style="width:640px">
+  <h2><i class="ti ti-building-skyscraper"></i> <span id="mo-dept-t">Nuevo Departamento</span></h2>
+  <input type="hidden" id="d-id">
+  <div class="fg2">
+    <div class="fg"><label>Número / ID *</label><input id="d-num" type="text" placeholder="1A, 2B, PH"></div>
+    <div class="fg"><label>Piso</label><input id="d-piso" type="text" placeholder="1, 2, PB"></div>
+    <div class="fg"><label>Superficie (m²)</label><input id="d-sup" type="number" placeholder="65" min="0"></div>
+    <div class="fg"><label>Ambientes</label><input id="d-amb" type="number" placeholder="2" min="1"></div>
+    <div class="fg full"><label>Descripción</label><textarea id="d-desc" rows="2" placeholder="Características..."></textarea></div>
+    <div class="fg"><label>Estado</label>
+      <select id="d-estado"><option value="disponible">Disponible</option><option value="ocupado">Ocupado</option><option value="mantenimiento">En mantenimiento</option></select>
+    </div>
+  </div>
+
+  <div class="stl">Números de cliente — servicios</div>
+  <div class="fg3">
+    <div class="fg"><label>⚡ N° Cliente Luz</label><input id="d-nc-luz" type="text" placeholder="10012345"></div>
+    <div class="fg"><label>🔥 N° Cliente Gas</label><input id="d-nc-gas" type="text" placeholder="20054321"></div>
+    <div class="fg"><label>💧 N° Cliente Agua</label><input id="d-nc-agua" type="text" placeholder="AG-00987"></div>
+    <div class="fg"><label>🏛️ N° Cliente ABL</label><input id="d-nc-abl" type="text" placeholder="Ej: 12345-6"></div>
+    <div class="fg"><label>🏙️ N° Cliente Imp. Municipal</label><input id="d-nc-municipal" type="text" placeholder="Ej: 98765"></div>
+  </div>
+
+  <div class="stl">Luz de bomba de agua</div>
+  <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:var(--bg2);border-radius:var(--r);margin-bottom:8px">
+    <input type="checkbox" id="d-tiene-bomba" style="width:18px;height:18px;min-height:unset;cursor:pointer" onchange="toggleBombaInfo()">
+    <span style="font-size:13px;font-weight:500">Este departamento tiene luz de bomba de agua</span>
+  </label>
+  <div id="d-bomba-info" style="display:none">
+    <div class="al suc" style="margin-bottom:6px"><i class="ti ti-check"></i> Al cargar una boleta de luz, el gasto de bomba se agregará automáticamente a la cuenta de este departamento.</div>
+  </div>
+
+  <div class="mac">
+    <button class="btn" onclick="cm('mo-dept')">Cancelar</button>
+    <button class="btn pri" onclick="guardarDept()"><i class="ti ti-check"></i> Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- ===== MODAL INQUILINO ===== -->
+<div class="mo" id="mo-inq">
+<div class="mbox">
+  <h2><i class="ti ti-user"></i> <span id="mo-inq-t">Nuevo Inquilino</span></h2>
+  <input type="hidden" id="i-id">
+  <div class="fg2">
+    <div class="fg"><label>Nombre *</label><input id="i-nom" type="text" placeholder="Juan"></div>
+    <div class="fg"><label>Apellido *</label><input id="i-ape" type="text" placeholder="García"></div>
+    <div class="fg"><label>DNI / CUIL</label><input id="i-dni" type="text" placeholder="20-12345678-9"></div>
+    <div class="fg"><label>Teléfono</label><input id="i-tel" type="text" placeholder="+54 11 1234-5678"></div>
+    <div class="fg full"><label>Email</label><input id="i-email" type="email" placeholder="juan@email.com"></div>
+    <div class="fg"><label>Ocupación</label><input id="i-ocup" type="text" placeholder="Empleado..."></div>
+    <div class="fg"><label>Garantía</label>
+      <select id="i-gar"><option value="propietario">Propietario garante</option><option value="seguro">Seguro de caución</option><option value="deposito">Depósito</option><option value="otro">Otro</option></select>
+    </div>
+    <div class="fg full"><label>Notas</label><textarea id="i-notas" rows="2" placeholder="Info adicional..."></textarea></div>
+  </div>
+
+  <div class="stl">Asignar a departamento (opcional)</div>
+  <div class="al info" style="margin-bottom:10px"><i class="ti ti-info-circle"></i> Si completás esto se crea el contrato automáticamente junto con el inquilino.</div>
+  <div class="fg2">
+    <div class="fg">
+      <label>Departamento</label>
+      <select id="i-dept" onchange="onDeptInq()">
+        <option value="">— Sin asignar —</option>
+      </select>
+    </div>
+    <div class="fg" id="i-blk-monto">
+      <label>Alquiler mensual ($)</label>
+      <input id="i-monto" type="number" placeholder="0" min="0">
+    </div>
+    <div class="fg">
+      <label>Fecha inicio contrato</label>
+      <input id="i-ini" type="date">
+    </div>
+    <div class="fg">
+      <label>Fecha fin contrato</label>
+      <input id="i-fin" type="date">
+    </div>
+    <div class="fg">
+      <label>Depósito ($)</label>
+      <input id="i-deposito" type="number" placeholder="0" min="0">
+    </div>
+    <div class="fg">
+      <label>% Aumento pactado</label>
+      <input id="i-aumento" type="number" placeholder="Ej: 60" step="0.1" min="0">
+    </div>
+  </div>
+  <div id="i-dept-info" style="margin-top:4px"></div>
+
+  <div class="mac">
+    <button class="btn" onclick="cm('mo-inq')">Cancelar</button>
+    <button class="btn pri" onclick="guardarInq()"><i class="ti ti-check"></i> Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- ===== MODAL CONTRATO ===== -->
+<div class="mo" id="mo-cont">
+<div class="mbox">
+  <h2><i class="ti ti-file-text"></i> <span id="mo-cont-t">Nuevo Contrato</span></h2>
+  <input type="hidden" id="c-id">
+  <div class="fg2">
+    <div class="fg"><label>Departamento *</label><select id="c-dept"><option value="">Seleccionar...</option></select></div>
+    <div class="fg"><label>Inquilino *</label><select id="c-inq"><option value="">Seleccionar...</option></select></div>
+    <div class="fg"><label>Fecha inicio *</label><input id="c-ini" type="date"></div>
+    <div class="fg"><label>Fecha fin *</label><input id="c-fin" type="date"></div>
+    <div class="fg"><label>Alquiler mensual ($) *</label><input id="c-monto" type="number" placeholder="0" min="0"></div>
+    <div class="fg"><label>Depósito ($)</label><input id="c-dep" type="number" placeholder="0" min="0"></div>
+    <div class="fg"><label>% Aumento pactado</label><input id="c-aum" type="number" placeholder="60" step="0.1" min="0"></div>
+    <div class="fg"><label>Periodicidad</label>
+      <select id="c-per"><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12" selected>Anual</option></select>
+    </div>
+    <div class="fg full"><label>Cláusulas adicionales</label><textarea id="c-claus" rows="3" placeholder="Términos especiales..."></textarea></div>
+  </div>
+  <div class="mac">
+    <button class="btn" onclick="cm('mo-cont')">Cancelar</button>
+    <button class="btn pri" onclick="guardarCont()"><i class="ti ti-check"></i> Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- ===== MODAL SERVICIO ===== -->
+<div class="mo" id="mo-serv">
+<div class="mbox" style="width:680px">
+  <h2 id="mo-serv-title"><i class="ti ti-bolt"></i> Cargar Boleta de Servicio</h2>
+  <input type="hidden" id="s-id">
+  <div class="fg3">
+    <div class="fg"><label>Tipo *</label>
+      <select id="s-tipo" onchange="onTipoServ()">
+        <option value="luz">⚡ Luz</option>
+        <option value="gas">🔥 Gas</option>
+        <option value="agua">💧 Agua</option>
+        <option value="abl">🏛️ ABL</option>
+        <option value="municipal">🏙️ Imp. Municipal</option>
+      </select>
+    </div>
+    <div class="fg"><label>Período *</label><input id="s-periodo" type="month"></div>
+    <div class="fg"><label>Fecha vencimiento boleta</label><input id="s-venc" type="date"></div>
+  </div>
+  <div class="fg2">
+    <div class="fg">
+      <label>N° de cliente de la boleta *</label>
+      <div style="display:flex;gap:8px">
+        <input id="s-nbolt" type="text" placeholder="Ej: 723" oninput="buscarDeptPorNc()">
+        <button class="btn" type="button" onclick="buscarDeptPorNc()" style="white-space:nowrap"><i class="ti ti-search"></i> Buscar</button>
+      </div>
+      <div id="nc-resultado" style="margin-top:6px"></div>
+    </div>
+    <div class="fg"><label>Monto total factura ($) *</label><input id="s-total" type="number" placeholder="0" min="0" oninput="recalcServ()"></div>
+  </div>
+
+  <!-- LUZ: por KW -->
+  <div id="blk-luz">
+    <div class="stl">Distribución — Luz (por kWh consumidos)</div>
+    <p style="font-size:12px;color:var(--tx2);margin-bottom:8px">Ingresá los kWh de cada departamento. El sistema calcula el monto proporcional automáticamente.</p>
+    <div id="dist-luz"></div>
+    <div class="stl">Bomba de agua (luz compartida)</div>
+    <p style="font-size:12px;color:var(--tx2);margin-bottom:8px">kWh calculados manualmente de la bomba. Marcá qué deptos la comparten.</p>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+      <div class="fg" style="width:160px;margin:0"><label>kWh bomba</label><input id="s-bomba-kw" type="number" placeholder="0" min="0" oninput="recalcServ()"></div>
+      <div class="fg" style="width:160px;margin:0"><label>Monto bomba ($)</label><input id="s-bomba-monto" type="text" readonly placeholder="se calcula solo"></div>
+    </div>
+    <div id="bomba-depts" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+    <div style="margin-top:8px;padding:8px;background:var(--bg2);border-radius:var(--r);font-size:13px">
+      Total distribuido: <strong id="s-dist-total">$0</strong> &nbsp;|&nbsp; Restante: <strong id="s-restante">$0</strong>
+    </div>
+  </div>
+
+  <!-- GAS / AGUA: por porcentaje o fracción -->
+  <div id="blk-gasagua" style="display:none">
+    <div class="stl">Distribución — <span id="blk-tipo-label">Gas</span> (por % o fracción)</div>
+    <p style="font-size:12px;color:var(--tx2);margin-bottom:8px">Ingresá el % o fracción (0.25 = 25%) por departamento.</p>
+    <div style="display:flex;gap:10px;margin-bottom:8px">
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+        <input type="radio" name="s-metodo-pct" value="pct" checked onchange="recalcServ()"> Porcentaje (%)
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+        <input type="radio" name="s-metodo-pct" value="frac" onchange="recalcServ()"> Fracción (0.xx)
+      </label>
+    </div>
+    <div id="dist-gasagua"></div>
+    <div style="margin-top:8px;padding:8px;background:var(--bg2);border-radius:var(--r);font-size:13px">
+      Suma: <strong id="s-suma-pct">0%</strong> &nbsp;|&nbsp; Total distribuido: <strong id="s-dist-total2">$0</strong>
+    </div>
+  </div>
+
+  <div class="mac">
+    <button class="btn" onclick="cm('mo-serv')">Cancelar</button>
+    <button class="btn pri" onclick="guardarServ()"><i class="ti ti-calculator"></i> Calcular y guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- ===== MODAL MANTENIMIENTO ===== -->
+<div class="mo" id="mo-mant">
+<div class="mbox">
+  <h2><i class="ti ti-tools"></i> Gasto de Mantenimiento</h2>
+  <input type="hidden" id="mt-id">
+  <div class="fg2">
+    <div class="fg"><label>Departamento / Área</label><select id="mt-dept"></select></div>
+    <div class="fg"><label>Fecha *</label><input id="mt-fecha" type="date"></div>
+    <div class="fg"><label>Categoría</label>
+      <select id="mt-cat">
+        <option value="plomeria">Plomería</option><option value="electricidad">Electricidad</option>
+        <option value="pintura">Pintura</option><option value="carpinteria">Carpintería</option>
+        <option value="limpieza">Limpieza</option><option value="ascensor">Ascensor</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div class="fg"><label>Monto ($) *</label><input id="mt-monto" type="number" placeholder="0" min="0"></div>
+    <div class="fg full"><label>Descripción *</label><textarea id="mt-desc" rows="2" placeholder="Descripción del trabajo..."></textarea></div>
+    <div class="fg full"><label>Proveedor</label><input id="mt-prov" type="text" placeholder="Nombre del proveedor"></div>
+  </div>
+  <div class="mac">
+    <button class="btn" onclick="cm('mo-mant')">Cancelar</button>
+    <button class="btn pri" onclick="guardarMant()"><i class="ti ti-check"></i> Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- ===== MODAL TAREA PENDIENTE ===== -->
+<div class="mo" id="mo-tarea">
+<div class="mbox" style="max-width:500px">
+  <h2><i class="ti ti-clock-plus"></i> <span id="mo-tarea-t">Nueva Tarea Pendiente</span></h2>
+  <input type="hidden" id="tr-id">
+  <div class="fg2">
+    <div class="fg"><label>Departamento / Área</label><select id="tr-dept"></select></div>
+    <div class="fg"><label>Prioridad</label>
+      <select id="tr-prio">
+        <option value="alta">🔴 Alta — urgente</option>
+        <option value="media" selected>🟡 Media</option>
+        <option value="baja">🟢 Baja — cuando se pueda</option>
+      </select>
+    </div>
+    <div class="fg"><label>Categoría</label>
+      <select id="tr-cat">
+        <option value="plomeria">Plomería</option>
+        <option value="electricidad">Electricidad</option>
+        <option value="pintura">Pintura</option>
+        <option value="carpinteria">Carpintería</option>
+        <option value="limpieza">Limpieza</option>
+        <option value="ascensor">Ascensor</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div class="fg"><label>Fecha límite (opcional)</label><input id="tr-fecha" type="date"></div>
+    <div class="fg full"><label>Descripción *</label><textarea id="tr-desc" rows="3" placeholder="Describí qué hay que hacer..."></textarea></div>
+    <div class="fg full"><label>Notas adicionales</label><textarea id="tr-notas" rows="2" placeholder="Presupuesto estimado, contactos, observaciones..."></textarea></div>
+  </div>
+  <div class="mac">
+    <button class="btn" onclick="cm('mo-tarea')">Cancelar</button>
+    <button class="btn pri" onclick="guardarTarea()"><i class="ti ti-check"></i> Guardar tarea</button>
+  </div>
+</div>
+</div>
+<div class="mo" id="mo-aum">
+<div class="mbox" style="max-width:400px">
+  <h2><i class="ti ti-percentage"></i> Aplicar Aumento</h2>
+  <input type="hidden" id="aum-id">
+  <div class="fg" style="margin-bottom:9px"><label>Monto actual</label><input id="aum-act" type="text" readonly></div>
+  <div class="fg" style="margin-bottom:9px"><label>% de aumento</label><input id="aum-pct" type="number" placeholder="Ej: 60" step="0.1" oninput="calcAum()"></div>
+  <div class="fg"><label>Nuevo monto calculado</label><input id="aum-new" type="text" readonly style="font-size:17px;font-weight:700;color:var(--greentx)"></div>
+  <div class="mac">
+    <button class="btn" onclick="cm('mo-aum')">Cancelar</button>
+    <button class="btn pri" onclick="confirmarAum()"><i class="ti ti-check"></i> Confirmar</button>
+  </div>
+</div>
+</div>
+
+<!-- ===== MODAL RECIBO ===== -->
+<div class="mo" id="mo-recibo">
+<div class="mbox" style="max-width:560px">
+  <h2><i class="ti ti-receipt"></i> Recibo de Cobro</h2>
+  <div id="recibo-html"></div>
+  <div class="mac mo-print-hide">
+    <button class="btn" onclick="cm('mo-recibo')">Cerrar</button>
+    <button class="btn pri" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir / PDF</button>
+  </div>
+</div>
+</div>
+
+<!-- ===== MODAL CONTRASEÑA ===== -->
+<div class="mo" id="mo-clave">
+<div class="mbox" style="max-width:360px;text-align:center">
+  <div style="width:48px;height:48px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .9rem">
+    <i class="ti ti-lock" style="font-size:22px;color:var(--bluetx)"></i>
+  </div>
+  <h2 style="justify-content:center;margin-bottom:.4rem">Área protegida</h2>
+  <p style="font-size:13px;color:var(--tx2);margin-bottom:1rem">Ingresá la contraseña de administración para acceder a Configuración.</p>
+  <input id="clave-input" type="password" placeholder="Contraseña" style="text-align:center;font-size:15px;letter-spacing:2px" autocomplete="off">
+  <p id="clave-err" style="color:var(--redtx);font-size:12px;margin-top:6px;min-height:18px"></p>
+  <div style="display:flex;gap:8px;margin-top:.75rem">
+    <button class="btn" style="flex:1" onclick="cm('mo-clave')">Cancelar</button>
+    <button class="btn pri" style="flex:1" onclick="verificarClave()"><i class="ti ti-lock-open"></i> Entrar</button>
+  </div>
+  <p style="font-size:11px;color:var(--tx3);margin-top:.75rem">La sesión se cierra automáticamente en 10 minutos.</p>
+</div>
+</div>
+
+<script>
+// ─── Supabase & storage ─────────────────────────────────
+let sb = null;
+const CK = 'admindept_cfg';
+const gc = () => { try { return JSON.parse(localStorage.getItem(CK)||'{}'); } catch { return {}; } };
+const sc = c => localStorage.setItem(CK, JSON.stringify(c));
+
+const SUPABASE_URL = 'https://nsxuxxkqqcmmqadhtcob.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeHV4eGtxcWNtbXFhZGh0Y29iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NDM2ODQsImV4cCI6MjA5NjMxOTY4NH0.-YcsSYTKldTaawv2htvG-HagSvQ9q81X5EWeo6qcSko';
+
+function initSB() {
+  try {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    document.getElementById('conn-status').textContent = '🟢 Conectado a Supabase';
+    // pre-fill config fields if visible
+    const cu = document.getElementById('cfg-url'); if(cu) cu.value = SUPABASE_URL;
+    const ck = document.getElementById('cfg-key'); if(ck) ck.value = SUPABASE_KEY;
+    // load saved building config
+    const cfg = gc();
+    ['nombre','dir','cuit','tel'].forEach(f => { const el=document.getElementById('cfg-'+f); if(el&&cfg[f]) el.value=cfg[f]; });
+    return true;
+  } catch(e) { sb = null; return false; }
+}
+function conectar() {
+  showCR('✓ Conexión ya configurada y activa.','suc');
+}
+async function testConn() {
+  if (!sb) { showCR('Error: no hay conexión','dan'); return; }
+  const { error } = await sb.from('departamentos').select('id').limit(1);
+  error ? showCR('Error: '+error.message,'dan') : showCR('✓ Conexión exitosa con Supabase!','suc');
+}
+function showCR(msg, type) {
+  const el = document.getElementById('conn-res');
+  el.innerHTML = `<div class="al ${type}">${msg}</div>`;
+  setTimeout(() => el.innerHTML='', 5000);
+}
+async function guardarCfg() {
+  const n={...gc(), nombre:document.getElementById('cfg-nombre').value, dir:document.getElementById('cfg-dir').value, cuit:document.getElementById('cfg-cuit').value, tel:document.getElementById('cfg-tel').value};
+  sc(n);
+  if (sb) await sb.from('configuracion').upsert({id:1, nombre:n.nombre, direccion:n.dir, cuit:n.cuit, telefono:n.tel});
+  alert('Guardado ✓');
+}
+
+// ─── Helpers ────────────────────────────────────────────
+const uid = () => Date.now()+'_'+Math.random().toString(36).slice(2,6);
+const fmt = n => '$'+Number(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
+const fmtD = d => { if(!d) return '—'; const p=d.slice(0,10).split('-'); return `${p[2]}/${p[1]}/${p[0]}`; };
+const dvenc = fin => { if(!fin) return 9999; return Math.ceil((new Date(fin)-new Date())/86400000); };
+const mesActual = () => new Date().toISOString().slice(0,7);
+
+// localStorage fallback
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)||'[]'); } catch { return []; } }
+function lsSave(k,v) { localStorage.setItem(k, JSON.stringify(v)); }
+function lsUpsert(k,item) { let a=lsGet(k); const i=a.findIndex(x=>x.id===item.id); if(i>=0) a[i]=item; else a.push(item); lsSave(k,a); }
+function lsDel(k,id) { lsSave(k, lsGet(k).filter(x=>x.id!==id)); }
+
+// ─── Nav ────────────────────────────────────────────────
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id)?.classList.add('active');
+  if (el) el.classList.add('active');
+  const fn = { dashboard:renderDash, departamentos:renderDepts, inquilinos:renderInqs, contratos:renderConts, servicios:renderServs, cobros:renderCobros, pagos:()=>{ document.getElementById('pagos-periodo').value=mesActual(); renderPagos(); }, mantenimiento:renderMantPend };
+  fn[id]?.();
+}
+function om(id) { document.getElementById(id).classList.add('open'); }
+function cm(id) { document.getElementById(id).classList.remove('open'); }
+function switchTab(prefix, tab, el) {
+  document.querySelectorAll(`#${prefix}-todos, #${prefix}-por-dept`).forEach(t => t.classList.remove('active'));
+  document.querySelectorAll(`.tab`).forEach(t => t.classList.remove('active'));
+  document.getElementById(`${prefix}-${tab}`)?.classList.add('active');
+  if (el) el.classList.add('active');
+  if (tab==='por-dept') { fillDeptSelect('mant-filter-dept', true); document.getElementById('tbl-mant-dept').innerHTML='<p style="color:var(--tx2);font-size:13px">Seleccioná un departamento.</p>'; }
+  else if (tab==='pendientes') renderMantPend();
+  else renderMantAll();
+}
+
+// ─── Data fetchers ───────────────────────────────────────
+async function getDepts() {
+  if (!sb) return lsGet('depts');
+  const {data} = await sb.from('departamentos').select('*').order('num');
+  return data||[];
+}
+async function getInqs() {
+  if (!sb) return lsGet('inqs');
+  const {data} = await sb.from('inquilinos').select('*').order('apellido');
+  return data||[];
+}
+async function getConts() {
+  if (!sb) return lsGet('conts');
+  const {data} = await sb.from('contratos').select('*').order('fecha_fin');
+  return data||[];
+}
+async function getServs() {
+  if (!sb) return lsGet('servs');
+  const {data} = await sb.from('servicios').select('*').order('periodo',{ascending:false});
+  return data||[];
+}
+async function getMants() {
+  if (!sb) return lsGet('mants');
+  const {data} = await sb.from('mantenimiento').select('*').order('fecha',{ascending:false});
+  return data||[];
+}
+async function getPagos(periodo) {
+  if (!sb) { const all=lsGet('pagos'); return periodo ? all.filter(p=>p.periodo===periodo) : all; }
+  let q = sb.from('pagos').select('*');
+  if (periodo) q = q.eq('periodo', periodo);
+  const {data} = await q.order('created_at');
+  return data||[];
+}
+
+async function saveDept(d) { if (!sb) { lsUpsert('depts',d); return; } await sb.from('departamentos').upsert(d); }
+async function saveInq(i) { if (!sb) { lsUpsert('inqs',i); return; } await sb.from('inquilinos').upsert(i); }
+async function saveCont(c) { if (!sb) { lsUpsert('conts',c); return; } await sb.from('contratos').upsert(c); }
+async function saveServ(s) { if (!sb) { lsUpsert('servs',s); return; } await sb.from('servicios').upsert(s); }
+async function saveMant(m) { if (!sb) { lsUpsert('mants',m); return; } await sb.from('mantenimiento').upsert(m); }
+
+// ─── Tareas pendientes ───────────────────────────────────
+async function getTareas() {
+  if (!sb) return lsGet('tareas');
+  const {data} = await sb.from('tareas_pendientes').select('*').order('created_at',{ascending:false});
+  return data||[];
+}
+async function saveTarea(t) { if (!sb) { lsUpsert('tareas',t); return; } await sb.from('tareas_pendientes').upsert(t); }
+async function delTarea(id) { if (!sb) { lsDel('tareas',id); return; } await sb.from('tareas_pendientes').delete().eq('id',id); }
+
+async function abrirTarea(tarea=null){
+  await fillDeptSelect('tr-dept', false);
+  document.getElementById('mo-tarea-t').textContent = tarea ? 'Editar Tarea' : 'Nueva Tarea Pendiente';
+  document.getElementById('tr-id').value='';
+  document.getElementById('tr-desc').value='';
+  document.getElementById('tr-notas').value='';
+  document.getElementById('tr-fecha').value='';
+  document.getElementById('tr-prio').value='media';
+  document.getElementById('tr-cat').value='otro';
+  if(tarea){
+    document.getElementById('tr-id').value=tarea.id;
+    document.getElementById('tr-dept').value=tarea.dept_id||'';
+    document.getElementById('tr-prio').value=tarea.prioridad||'media';
+    document.getElementById('tr-cat').value=tarea.categoria||'otro';
+    document.getElementById('tr-fecha').value=tarea.fecha_limite||'';
+    document.getElementById('tr-desc').value=tarea.descripcion||'';
+    document.getElementById('tr-notas').value=tarea.notas||'';
+  }
+  om('mo-tarea');
+}
+
+async function guardarTarea(){
+  const desc=document.getElementById('tr-desc').value.trim();
+  if(!desc){alert('Ingresá una descripción');return;}
+  const id=document.getElementById('tr-id').value||uid();
+  const t={id, dept_id:document.getElementById('tr-dept').value, prioridad:document.getElementById('tr-prio').value, categoria:document.getElementById('tr-cat').value, fecha_limite:document.getElementById('tr-fecha').value||null, descripcion:desc, notas:document.getElementById('tr-notas').value, estado:'pendiente', created_at:new Date().toISOString()};
+  await saveTarea(t); cm('mo-tarea'); renderMantPend();
+}
+
+async function completarTarea(id){
+  // pasar a mantenimiento real y eliminar de tareas
+  const tareas=await getTareas();
+  const t=tareas.find(x=>x.id===id);
+  if(!t)return;
+  // abrir modal de gasto con datos pre-cargados
+  await abrirMant(t.dept_id);
+  document.getElementById('mt-cat').value=t.categoria||'otro';
+  document.getElementById('mt-desc').value=t.descripcion;
+  document.getElementById('mt-fecha').value=new Date().toISOString().slice(0,10);
+  // guardar referencia para eliminar tarea al guardar el gasto
+  document.getElementById('mo-mant').dataset.tareaId=id;
+  cm('mo-tarea');
+}
+
+async function renderMantPend(){
+  const el=document.getElementById('tbl-mant-pend');
+  if(!el)return;
+  el.innerHTML='<div class="ld"><span class="sp"></span>Cargando...</div>';
+  const [tareas,depts]=await Promise.all([getTareas(),getDepts()]);
+  const pendientes=tareas.filter(t=>t.estado==='pendiente');
+  if(!pendientes.length){
+    el.innerHTML=`<div style="text-align:center;padding:2rem;color:var(--tx2)">
+      <i class="ti ti-circle-check" style="font-size:40px;color:var(--greentx);display:block;margin-bottom:.5rem"></i>
+      <strong>¡Todo al día!</strong><br><span style="font-size:13px">No hay tareas pendientes.</span>
+    </div>`;
+    return;
+  }
+  const prioOrder={alta:0,media:1,baja:2};
+  const prioStyle={alta:{bg:'#FFF0EE',tx:'#B83232',icon:'🔴'},media:{bg:'#FFF8EE',tx:'#B85C00',icon:'🟡'},baja:{bg:'#EDF7DC',tx:'3D6E10',icon:'🟢'}};
+  const sorted=[...pendientes].sort((a,b)=>(prioOrder[a.prioridad]||1)-(prioOrder[b.prioridad]||1));
+  let h='<div style="display:flex;flex-direction:column;gap:10px">';
+  sorted.forEach(t=>{
+    const dept=depts.find(d=>d.id===t.dept_id);
+    const ps=prioStyle[t.prioridad]||prioStyle.media;
+    const diasLimite=t.fecha_limite?dvenc(t.fecha_limite):null;
+    let vencStr='';
+    if(diasLimite!==null){
+      if(diasLimite<0) vencStr=`<span class="bdg red">Vencida hace ${Math.abs(diasLimite)}d</span>`;
+      else if(diasLimite<=3) vencStr=`<span class="bdg red">Vence en ${diasLimite}d</span>`;
+      else if(diasLimite<=7) vencStr=`<span class="bdg amber">Vence en ${diasLimite}d</span>`;
+      else vencStr=`<span class="bdg gray">Límite: ${fmtD(t.fecha_limite)}</span>`;
+    }
+    h+=`<div style="background:var(--bg);border:.5px solid var(--bd);border-radius:var(--rl);padding:1rem;border-left:4px solid ${ps.bg==='#FFF0EE'?'#E05050':ps.bg==='#FFF8EE'?'#D97B2E':'#5A9E20'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap">
+            <span style="font-size:12px;font-weight:600;background:${ps.bg};color:${ps.tx};padding:2px 8px;border-radius:20px">${ps.icon} ${t.prioridad.charAt(0).toUpperCase()+t.prioridad.slice(1)}</span>
+            ${dept?`<span class="bdg blue">Depto ${dept.num}</span>`:'<span class="bdg gray">Áreas comunes</span>'}
+            <span class="bdg gray">${t.categoria}</span>
+            ${vencStr}
+          </div>
+          <p style="font-size:14px;font-weight:500;margin-bottom:${t.notas?'4px':'0'}">${t.descripcion}</p>
+          ${t.notas?`<p style="font-size:12px;color:var(--tx2)">${t.notas}</p>`:''}
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          <button class="btn sm suc" onclick="completarTarea('${t.id}')" title="Marcar como hecho y registrar gasto"><i class="ti ti-check"></i> Hecho</button>
+          <button class="btn sm" onclick="editarTarea('${t.id}')" title="Editar"><i class="ti ti-edit"></i></button>
+          <button class="btn sm dan" onclick="if(confirm('¿Eliminar tarea?'))delTarea('${t.id}').then(renderMantPend)" title="Eliminar"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML=h+'</div>';
+}
+
+async function editarTarea(id){
+  const tareas=await getTareas();
+  const t=tareas.find(x=>x.id===id);
+  if(t) abrirTarea(t);
+}
+async function savePago(p) { if (!sb) { lsUpsert('pagos',p); return; } await sb.from('pagos').upsert(p); }
+
+async function delItem(table, lsKey, id) {
+  if (!sb) { lsDel(lsKey,id); return; }
+  await sb.from(table).delete().eq('id',id);
+}
+
+// ─── Dept ────────────────────────────────────────────────
+function toggleBombaInfo(){
+  const cb=document.getElementById('d-tiene-bomba');
+  document.getElementById('d-bomba-info').style.display=cb.checked?'block':'none';
+}
+
+function abrirDept(dept=null) {
+  document.getElementById('mo-dept-t').textContent = dept ? 'Editar Departamento' : 'Nuevo Departamento';
+  ['d-id','d-num','d-piso','d-sup','d-amb','d-desc','d-nc-luz','d-nc-gas','d-nc-agua','d-nc-abl','d-nc-municipal'].forEach(f=>{const el=document.getElementById(f);if(el)el.value='';});
+  document.getElementById('d-estado').value='disponible';
+  document.getElementById('d-tiene-bomba').checked=false;
+  document.getElementById('d-bomba-info').style.display='none';
+  if (dept) {
+    document.getElementById('d-id').value=dept.id;
+    document.getElementById('d-num').value=dept.num||'';
+    document.getElementById('d-piso').value=dept.piso||'';
+    document.getElementById('d-sup').value=dept.superficie||'';
+    document.getElementById('d-amb').value=dept.ambientes||'';
+    document.getElementById('d-desc').value=dept.descripcion||'';
+    document.getElementById('d-estado').value=dept.estado||'disponible';
+    document.getElementById('d-nc-luz').value=dept.nc_luz||'';
+    document.getElementById('d-nc-gas').value=dept.nc_gas||'';
+    document.getElementById('d-nc-agua').value=dept.nc_agua||'';
+    document.getElementById('d-nc-abl').value=dept.nc_abl||'';
+    document.getElementById('d-nc-municipal').value=dept.nc_municipal||'';
+    document.getElementById('d-tiene-bomba').checked=dept.tiene_bomba||false;
+    document.getElementById('d-bomba-info').style.display=dept.tiene_bomba?'block':'none';
+  }
+  om('mo-dept');
+}
+async function guardarDept() {
+  const id=document.getElementById('d-id').value||uid();
+  const num=document.getElementById('d-num').value.trim();
+  if (!num) { alert('Ingresá el número de departamento'); return; }
+  const d={
+    id, num,
+    piso:document.getElementById('d-piso').value,
+    superficie:document.getElementById('d-sup').value||null,
+    ambientes:document.getElementById('d-amb').value||null,
+    descripcion:document.getElementById('d-desc').value,
+    estado:document.getElementById('d-estado').value,
+    nc_luz:document.getElementById('d-nc-luz').value,
+    nc_gas:document.getElementById('d-nc-gas').value,
+    nc_agua:document.getElementById('d-nc-agua').value,
+    nc_abl:document.getElementById('d-nc-abl').value,
+    nc_municipal:document.getElementById('d-nc-municipal').value,
+    tiene_bomba:document.getElementById('d-tiene-bomba').checked
+  };
+  await saveDept(d); cm('mo-dept'); renderDepts(); renderDash();
+}
+async function renderDepts() {
+  const el=document.getElementById('tbl-depts');
+  el.innerHTML='<div class="ld"><span class="sp"></span>Cargando...</div>';
+  const [depts,conts,inqs]=await Promise.all([getDepts(),getConts(),getInqs()]);
+  if (!depts.length){el.innerHTML='<p style="color:var(--tx2);padding:.5rem 0">Sin departamentos. Agregá el primero.</p>';return;}
+  let h=`<table><thead><tr><th>Dpto</th><th>Piso</th><th>m²</th><th>Estado</th><th>⚡ Luz</th><th>🔥 Gas</th><th>💧 Agua</th><th>🏛️ ABL</th><th>🏙️ Mun.</th><th>Bomba</th><th>Inquilino</th><th>Acciones</th></tr></thead><tbody>`;
+  depts.forEach(d=>{
+    const cont=conts.find(c=>c.dept_id===d.id&&c.estado==='activo');
+    const inq=cont?inqs.find(i=>i.id===cont.inq_id):null;
+    const b=d.estado==='ocupado'?'green':d.estado==='disponible'?'blue':'amber';
+    h+=`<tr><td><strong>${d.num}</strong></td><td>${d.piso||'—'}</td><td>${d.superficie||'—'}</td>
+    <td><span class="bdg ${b}">${d.estado}</span></td>
+    <td style="font-family:monospace;font-size:11px">${d.nc_luz||'—'}</td>
+    <td style="font-family:monospace;font-size:11px">${d.nc_gas||'—'}</td>
+    <td style="font-family:monospace;font-size:11px">${d.nc_agua||'—'}</td>
+    <td style="font-family:monospace;font-size:11px">${d.nc_abl||'—'}</td>
+    <td style="font-family:monospace;font-size:11px">${d.nc_municipal||'—'}</td>
+    <td style="text-align:center">${d.tiene_bomba?'<span class="bdg green">💡 Sí</span>':'<span style="color:var(--tx3)">—</span>'}</td>
+    <td>${inq?inq.nombre+' '+inq.apellido:'<span style="color:var(--tx3)">—</span>'}</td>
+    <td style="white-space:nowrap">
+      <button class="btn sm" onclick="editDept('${d.id}')"><i class="ti ti-edit"></i></button>
+      <button class="btn sm dan" style="margin-left:3px" onclick="if(confirm('¿Eliminar?'))delItem('departamentos','depts','${d.id}').then(renderDepts)"><i class="ti ti-trash"></i></button>
+    </td></tr>`;
+  });
+  el.innerHTML=h+'</tbody></table>';
+}
+async function editDept(id){const d=(await getDepts()).find(x=>x.id===id);if(d)abrirDept(d);}
+
+// ─── Inq ────────────────────────────────────────────────
+async function abrirInq(inq=null){
+  document.getElementById('mo-inq-t').textContent=inq?'Editar Inquilino':'Nuevo Inquilino';
+  ['i-id','i-nom','i-ape','i-dni','i-tel','i-email','i-ocup','i-notas','i-monto','i-deposito','i-aumento'].forEach(f=>document.getElementById(f).value='');
+  document.getElementById('i-gar').value='propietario';
+  document.getElementById('i-dept').value='';
+  document.getElementById('i-ini').value=new Date().toISOString().slice(0,10);
+  // fecha fin default 1 año
+  const finDefault=new Date(); finDefault.setFullYear(finDefault.getFullYear()+1);
+  document.getElementById('i-fin').value=finDefault.toISOString().slice(0,10);
+  document.getElementById('i-dept-info').innerHTML='';
+  // llenar select de deptos disponibles
+  const depts=await getDepts();
+  const conts=await getConts();
+  const s=document.getElementById('i-dept');
+  s.innerHTML='<option value="">— Sin asignar —</option>';
+  depts.forEach(d=>{
+    const tieneContrato=conts.find(c=>c.dept_id===d.id&&c.estado==='activo');
+    if(!tieneContrato||d.id===inq?.dept_id_actual){
+      s.innerHTML+=`<option value="${d.id}">${d.num}${d.piso?' — Piso '+d.piso:''} ${d.estado==='disponible'?'✓':''}${d.estado==='ocupado'?'(ocupado)':''}</option>`;
+    }
+  });
+  if(inq){
+    document.getElementById('i-id').value=inq.id;
+    document.getElementById('i-nom').value=inq.nombre||'';
+    document.getElementById('i-ape').value=inq.apellido||'';
+    document.getElementById('i-dni').value=inq.dni||'';
+    document.getElementById('i-tel').value=inq.telefono||'';
+    document.getElementById('i-email').value=inq.email||'';
+    document.getElementById('i-ocup').value=inq.ocupacion||'';
+    document.getElementById('i-gar').value=inq.garantia||'propietario';
+    document.getElementById('i-notas').value=inq.notas||'';
+    // si ya tiene contrato activo, mostrar depto asignado
+    const contActivo=conts.find(c=>c.inq_id===inq.id&&c.estado==='activo');
+    if(contActivo){
+      document.getElementById('i-dept').value=contActivo.dept_id;
+      document.getElementById('i-monto').value=contActivo.monto;
+      document.getElementById('i-ini').value=contActivo.fecha_inicio;
+      document.getElementById('i-fin').value=contActivo.fecha_fin;
+      document.getElementById('i-deposito').value=contActivo.deposito||'';
+      document.getElementById('i-aumento').value=contActivo.pct_aumento||'';
+      onDeptInq();
+    }
+  }
+  om('mo-inq');
+}
+
+function onDeptInq(){
+  const val=document.getElementById('i-dept').value;
+  const info=document.getElementById('i-dept-info');
+  if(!val){info.innerHTML='';return;}
+  const dept=_todosLosDepts?.find(d=>d.id===val)||{num:val};
+  info.innerHTML=`<div class="al suc" style="padding:5px 10px;margin-bottom:8px"><i class="ti ti-circle-check"></i> Se asignará a <strong>Depto ${dept.num}</strong> y se creará el contrato automáticamente.</div>`;
+}
+
+async function guardarInq(){
+  const id=document.getElementById('i-id').value||uid();
+  const nombre=document.getElementById('i-nom').value.trim();
+  if(!nombre){alert('Ingresá nombre');return;}
+  const inq={id,nombre,apellido:document.getElementById('i-ape').value,dni:document.getElementById('i-dni').value,telefono:document.getElementById('i-tel').value,email:document.getElementById('i-email').value,ocupacion:document.getElementById('i-ocup').value,garantia:document.getElementById('i-gar').value,notas:document.getElementById('i-notas').value};
+  await saveInq(inq);
+  // Si eligió un depto, crear/actualizar contrato automáticamente
+  const deptId=document.getElementById('i-dept').value;
+  const monto=parseFloat(document.getElementById('i-monto').value)||0;
+  const fechaIni=document.getElementById('i-ini').value;
+  const fechaFin=document.getElementById('i-fin').value;
+  if(deptId&&monto&&fechaIni&&fechaFin){
+    // buscar si ya existe contrato activo para este inquilino
+    const conts=await getConts();
+    const contExistente=conts.find(c=>c.inq_id===id&&c.estado==='activo');
+    const contId=contExistente?.id||uid();
+    const cont={id:contId,dept_id:deptId,inq_id:id,fecha_inicio:fechaIni,fecha_fin:fechaFin,monto,deposito:parseFloat(document.getElementById('i-deposito').value)||0,pct_aumento:parseFloat(document.getElementById('i-aumento').value)||0,periodo_aumento:12,clausulas:'',estado:'activo'};
+    await saveCont(cont);
+    // marcar depto como ocupado
+    const depts=await getDepts();
+    const dept=depts.find(d=>d.id===deptId);
+    if(dept&&dept.estado!=='ocupado'){await saveDept({...dept,estado:'ocupado'});}
+  }
+  cm('mo-inq'); renderInqs(); renderDash();
+}
+async function renderInqs(){
+  const el=document.getElementById('tbl-inqs');
+  el.innerHTML='<div class="ld"><span class="sp"></span>Cargando...</div>';
+  const [inqs,conts,depts]=await Promise.all([getInqs(),getConts(),getDepts()]);
+  if(!inqs.length){el.innerHTML='<p style="color:var(--tx2);padding:.5rem 0">Sin inquilinos.</p>';return;}
+  let h=`<table><thead><tr><th>Nombre</th><th>DNI</th><th>Teléfono</th><th>Email</th><th>Garantía</th><th>Depto</th><th>Acc.</th></tr></thead><tbody>`;
+  inqs.forEach(i=>{
+    const c=conts.find(c=>c.inq_id===i.id&&c.estado==='activo');
+    const d=c?depts.find(x=>x.id===c.dept_id):null;
+    h+=`<tr><td><strong>${i.nombre} ${i.apellido}</strong></td><td>${i.dni||'—'}</td><td>${i.telefono||'—'}</td><td style="font-size:12px">${i.email||'—'}</td><td>${i.garantia||'—'}</td>
+    <td>${d?`<span class="bdg blue">${d.num}</span>`:'<span style="color:var(--tx3)">—</span>'}</td>
+    <td style="white-space:nowrap">
+      <button class="btn sm" onclick="editInq('${i.id}')"><i class="ti ti-edit"></i></button>
+      <button class="btn sm dan" style="margin-left:3px" onclick="if(confirm('¿Eliminar?'))delItem('inquilinos','inqs','${i.id}').then(renderInqs)"><i class="ti ti-trash"></i></button>
+    </td></tr>`;
+  });
+  el.innerHTML=h+'</tbody></table>';
+}
+async function editInq(id){const i=(await getInqs()).find(x=>x.id===id);if(i)abrirInq(i);}
+
+// ─── Contratos ──────────────────────────────────────────
+async function abrirCont(cont=null){
+  document.getElementById('mo-cont-t').textContent=cont?'Editar Contrato':'Nuevo Contrato';
+  const [depts,inqs]=await Promise.all([getDepts(),getInqs()]);
+  const sd=document.getElementById('c-dept'), si=document.getElementById('c-inq');
+  sd.innerHTML='<option value="">Seleccionar...</option>';
+  si.innerHTML='<option value="">Seleccionar...</option>';
+  depts.forEach(d=>sd.innerHTML+=`<option value="${d.id}">${d.num} — Piso ${d.piso||'?'}</option>`);
+  inqs.forEach(i=>si.innerHTML+=`<option value="${i.id}">${i.nombre} ${i.apellido}</option>`);
+  ['c-id','c-ini','c-fin','c-monto','c-dep','c-aum','c-claus'].forEach(f=>document.getElementById(f).value='');
+  document.getElementById('c-per').value='12';
+  if(cont){
+    document.getElementById('c-id').value=cont.id;
+    document.getElementById('c-dept').value=cont.dept_id;
+    document.getElementById('c-inq').value=cont.inq_id;
+    document.getElementById('c-ini').value=cont.fecha_inicio;
+    document.getElementById('c-fin').value=cont.fecha_fin;
+    document.getElementById('c-monto').value=cont.monto;
+    document.getElementById('c-dep').value=cont.deposito||'';
+    document.getElementById('c-aum').value=cont.pct_aumento||'';
+    document.getElementById('c-per').value=cont.periodo_aumento||'12';
+    document.getElementById('c-claus').value=cont.clausulas||'';
+  }
+  om('mo-cont');
+}
+async function guardarCont(){
+  const id=document.getElementById('c-id').value||uid();
+  const dept_id=document.getElementById('c-dept').value;
+  const inq_id=document.getElementById('c-inq').value;
+  const fecha_inicio=document.getElementById('c-ini').value;
+  const fecha_fin=document.getElementById('c-fin').value;
+  const monto=parseFloat(document.getElementById('c-monto').value)||0;
+  if(!dept_id||!inq_id||!fecha_inicio||!fecha_fin||!monto){alert('Completá todos los campos (*)');return;}
+  const c={id,dept_id,inq_id,fecha_inicio,fecha_fin,monto,deposito:parseFloat(document.getElementById('c-dep').value)||0,pct_aumento:parseFloat(document.getElementById('c-aum').value)||0,periodo_aumento:parseInt(document.getElementById('c-per').value),clausulas:document.getElementById('c-claus').value,estado:'activo'};
+  await saveCont(c);
+  const depts=await getDepts();
+  const dept=depts.find(d=>d.id===dept_id);
+  if(dept&&dept.estado!=='ocupado'){await saveDept({...dept,estado:'ocupado'});}
+  cm('mo-cont'); renderConts(); renderDash();
+}
+async function renderConts(){
+  const el=document.getElementById('tbl-conts');
+  el.innerHTML='<div class="ld"><span class="sp"></span>Cargando...</div>';
+  const [conts,depts,inqs]=await Promise.all([getConts(),getDepts(),getInqs()]);
+  if(!conts.length){el.innerHTML='<p style="color:var(--tx2);padding:.5rem 0">Sin contratos.</p>';return;}
+  let h=`<table><thead><tr><th>Depto</th><th>Inquilino</th><th>Inicio</th><th>Vencimiento</th><th>Alquiler</th><th>Depósito</th><th>Aumento</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>`;
+  conts.forEach(c=>{
+    const dept=depts.find(d=>d.id===c.dept_id);
+    const inq=inqs.find(i=>i.id===c.inq_id);
+    const dias=dvenc(c.fecha_fin);
+    let b='green',t='Activo';
+    if(dias<0){b='gray';t='Vencido';}
+    else if(dias<=7){b='red';t=`Vence ${dias}d`;}
+    else if(dias<=30){b='amber';t=`Vence ${dias}d`;}
+    h+=`<tr style="${dias>0&&dias<=30?'background:rgba(250,238,218,.2)':''}">
+    <td><strong>${dept?dept.num:'?'}</strong></td>
+    <td>${inq?inq.nombre+' '+inq.apellido:'?'}</td>
+    <td>${fmtD(c.fecha_inicio)}</td><td>${fmtD(c.fecha_fin)}</td>
+    <td>${fmt(c.monto)}</td><td>${c.deposito?fmt(c.deposito):'—'}</td>
+    <td>${c.pct_aumento?c.pct_aumento+'% c/'+c.periodo_aumento+'m':'—'}</td>
+    <td><span class="bdg ${b}">${t}</span></td>
+    <td style="white-space:nowrap;display:flex;gap:3px">
+      <button class="btn sm" title="Aumento" onclick="abrirAum('${c.id}',${c.monto},${c.pct_aumento||0})"><i class="ti ti-percentage"></i></button>
+      <button class="btn sm" onclick="editCont('${c.id}')"><i class="ti ti-edit"></i></button>
+      <button class="btn sm dan" onclick="if(confirm('¿Eliminar?'))delItem('contratos','conts','${c.id}').then(renderConts)"><i class="ti ti-trash"></i></button>
+    </td></tr>`;
+  });
+  el.innerHTML=h+'</tbody></table>';
+}
+async function editCont(id){const c=(await getConts()).find(x=>x.id===id);if(c)abrirCont(c);}
+
+let _aumMonto=0;
+function abrirAum(id,monto,pct){
+  _aumMonto=parseFloat(monto);
+  document.getElementById('aum-id').value=id;
+  document.getElementById('aum-act').value=fmt(_aumMonto);
+  document.getElementById('aum-pct').value=pct||'';
+  document.getElementById('aum-new').value=pct?fmt(_aumMonto*(1+pct/100)):'';
+  om('mo-aum');
+}
+function calcAum(){
+  const p=parseFloat(document.getElementById('aum-pct').value)||0;
+  document.getElementById('aum-new').value=p?fmt(_aumMonto*(1+p/100)):'';
+}
+async function confirmarAum(){
+  const id=document.getElementById('aum-id').value;
+  const pct=parseFloat(document.getElementById('aum-pct').value);
+  if(!pct){alert('Ingresá el %');return;}
+  const conts=await getConts();
+  const c=conts.find(x=>x.id===id);
+  if(!c)return;
+  c.monto=Math.round(c.monto*(1+pct/100));
+  c.pct_aumento=pct;
+  await saveCont(c); cm('mo-aum'); renderConts(); renderDash();
+}
+
+// ─── Servicios ──────────────────────────────────────────
+let _servDepts = [];
+let _todosLosDepts = [];
+
+async function abrirServ(){
+  _todosLosDepts = await getDepts();
+  _servDepts = _todosLosDepts.filter(d=>d.estado==='ocupado');
+  document.getElementById('s-id').value='';
+  document.getElementById('s-total').value='';
+  document.getElementById('s-nbolt').value='';
+  document.getElementById('s-venc').value='';
+  document.getElementById('s-periodo').value=mesActual();
+  document.getElementById('s-tipo').value='luz';
+  document.getElementById('s-bomba-kw').value='';
+  document.getElementById('s-bomba-monto').value='';
+  document.getElementById('nc-resultado').innerHTML='';
+  document.getElementById('mo-serv-title').innerHTML='<i class="ti ti-bolt"></i> Cargar Boleta de Servicio';
+  onTipoServ();
+  om('mo-serv');
+}
+
+// Busca automáticamente el depto por N° de cliente
+function buscarDeptPorNc(){
+  const nc = document.getElementById('s-nbolt').value.trim();
+  const tipo = document.getElementById('s-tipo').value;
+  const res = document.getElementById('nc-resultado');
+  if(!nc){ res.innerHTML=''; return; }
+  const campoMap = {luz:'nc_luz', gas:'nc_gas', agua:'nc_agua', abl:'nc_abl', municipal:'nc_municipal'};
+  const campo = campoMap[tipo];
+  const encontrados = _todosLosDepts.filter(d => d[campo] && d[campo].toString().trim() === nc);
+  const tipoLabel={luz:'luz',gas:'gas',agua:'agua',abl:'ABL',municipal:'Imp. Municipal'}[tipo];
+  if(encontrados.length === 0){
+    res.innerHTML=`<div class="al warn" style="padding:5px 10px;margin:0"><i class="ti ti-alert-triangle"></i> No se encontró ningún departamento con ese N° de cliente de ${tipoLabel}. Verificá que esté cargado en el departamento.</div>`;
+    _servDepts = _todosLosDepts.filter(d=>d.estado==='ocupado');
+  } else {
+    const nombres = encontrados.map(d=>`<strong>Depto ${d.num}</strong>`).join(', ');
+    res.innerHTML=`<div class="al suc" style="padding:5px 10px;margin:0"><i class="ti ti-circle-check"></i> Encontrado: ${nombres} — se asignará automáticamente.</div>`;
+    _servDepts = encontrados;
+  }
+  const esLuz = tipo==='luz';
+  if(esLuz) buildDistLuz();
+  else buildDistGasAgua();
+}
+
+function onTipoServ(){
+  const tipo=document.getElementById('s-tipo').value;
+  const esLuz=tipo==='luz';
+  const esGasAgua=['gas','agua','abl','municipal'].includes(tipo);
+  document.getElementById('blk-luz').style.display=esLuz?'':'none';
+  document.getElementById('blk-gasagua').style.display=esGasAgua?'':'none';
+  const labels={gas:'Gas',agua:'Agua',abl:'ABL',municipal:'Imp. Municipal'};
+  document.getElementById('blk-tipo-label').textContent=labels[tipo]||tipo;
+  // re-buscar con el nuevo tipo por si ya había un N° cargado
+  const nc = document.getElementById('s-nbolt').value.trim();
+  if(nc) buscarDeptPorNc();
+  else {
+    if(esLuz) buildDistLuz();
+    else buildDistGasAgua();
+  }
+}
+
+function buildDistLuz(){
+  const cf=document.getElementById('dist-luz');
+  if(!_servDepts.length){cf.innerHTML='<p style="color:var(--tx2);font-size:12px">No hay deptos ocupados.</p>';return;}
+  cf.innerHTML=`<div style="display:grid;grid-template-columns:70px 1fr 110px;gap:6px;align-items:center;margin-bottom:5px">
+    <span style="font-size:11px;color:var(--tx2);font-weight:500">DPTO</span>
+    <span style="font-size:11px;color:var(--tx2);font-weight:500">kWh medidor</span>
+    <span style="font-size:11px;color:var(--tx2);font-weight:500">Monto calculado</span>
+  </div>`+
+  _servDepts.map(d=>`<div style="display:grid;grid-template-columns:70px 1fr 110px;gap:6px;align-items:center;margin-bottom:5px">
+    <strong style="font-size:13px">${d.num}</strong>
+    <input type="number" placeholder="0" id="kw-${d.id}" oninput="recalcServ()" min="0" step="0.1">
+    <input type="text" readonly id="mto-${d.id}" placeholder="$0">
+  </div>`).join('');
+  // bomba checkboxes
+  document.getElementById('bomba-depts').innerHTML=_servDepts.map(d=>`
+    <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;background:var(--bg2);padding:4px 10px;border-radius:20px">
+      <input type="checkbox" id="bomba-${d.id}" onchange="recalcServ()"> ${d.num}
+    </label>`).join('');
+}
+
+function buildDistGasAgua(){
+  const cf=document.getElementById('dist-gasagua');
+  if(!_servDepts.length){cf.innerHTML='<p style="color:var(--tx2);font-size:12px">No hay deptos ocupados.</p>';return;}
+  cf.innerHTML=`<div style="display:grid;grid-template-columns:70px 1fr 130px;gap:6px;align-items:center;margin-bottom:5px">
+    <span style="font-size:11px;color:var(--tx2);font-weight:500">DPTO</span>
+    <span style="font-size:11px;color:var(--tx2);font-weight:500">Porcentaje / fracción</span>
+    <span style="font-size:11px;color:var(--tx2);font-weight:500">Monto calculado</span>
+  </div>`+
+  _servDepts.map(d=>`<div style="display:grid;grid-template-columns:70px 1fr 130px;gap:6px;align-items:center;margin-bottom:5px">
+    <strong style="font-size:13px">${d.num}</strong>
+    <input type="number" placeholder="0" id="pct-${d.id}" oninput="recalcServ()" min="0" step="0.01">
+    <input type="text" readonly id="mto2-${d.id}" placeholder="$0">
+  </div>`).join('');
+}
+
+function recalcServ(){
+  const total=parseFloat(document.getElementById('s-total').value)||0;
+  const tipo=document.getElementById('s-tipo').value;
+  if(tipo==='luz'){
+    // Calcular precio por kWh
+    let totalKw=0;
+    _servDepts.forEach(d=>{totalKw+=parseFloat(document.getElementById('kw-'+d.id)?.value||0);});
+    const bombaKw=parseFloat(document.getElementById('s-bomba-kw').value||0);
+    totalKw+=bombaKw;
+    const pxkw=totalKw>0?total/totalKw:0;
+    // bomba monto
+    const bombaM=bombaKw*pxkw;
+    document.getElementById('s-bomba-monto').value=bombaM>0?fmt(bombaM):'';
+    // por dept
+    let distTotal=0;
+    _servDepts.forEach(d=>{
+      const kw=parseFloat(document.getElementById('kw-'+d.id)?.value||0);
+      const bombaCk=document.getElementById('bomba-'+d.id);
+      const bombaPart=bombaCk?.checked && bombaKw>0 ? (bombaM / (_servDepts.filter(x=>document.getElementById('bomba-'+x.id)?.checked).length||1)) : 0;
+      const m=(kw*pxkw)+bombaPart;
+      const el=document.getElementById('mto-'+d.id);
+      if(el){el.value=m>0?fmt(m):'';} distTotal+=m;
+    });
+    document.getElementById('s-dist-total').textContent=fmt(distTotal);
+    document.getElementById('s-restante').textContent=fmt(total-distTotal);
+  } else {
+    const metodo=document.querySelector('input[name="s-metodo-pct"]:checked')?.value||'pct';
+    let suma=0;
+    _servDepts.forEach(d=>{suma+=parseFloat(document.getElementById('pct-'+d.id)?.value||0);});
+    const factor=metodo==='pct'?suma/100:suma;
+    let distTotal=0;
+    _servDepts.forEach(d=>{
+      const v=parseFloat(document.getElementById('pct-'+d.id)?.value||0);
+      const m=total>0&&factor>0?(v/(metodo==='pct'?100:1))*total/factor:0;
+      const el=document.getElementById('mto2-'+d.id);
+      if(el){el.value=m>0?fmt(m):'';}
+      distTotal+=m;
+    });
+    const sumaLabel=metodo==='pct'?suma.toFixed(1)+'%':(suma*100).toFixed(1)+'% equiv.';
+    document.getElementById('s-suma-pct').textContent=sumaLabel;
+    document.getElementById('s-dist-total2').textContent=fmt(distTotal);
+  }
+}
+
+async function guardarServ(){
+  const id=document.getElementById('s-id').value||uid();
+  const tipo=document.getElementById('s-tipo').value;
+  const periodo=document.getElementById('s-periodo').value;
+  const total=parseFloat(document.getElementById('s-total').value)||0;
+  const fecha_vencimiento=document.getElementById('s-venc').value||null;
+  const numero_boleta=document.getElementById('s-nbolt').value||null;
+  if(!periodo||!total){alert('Ingresá período y monto');return;}
+
+  const distribucion={};
+  if(tipo==='luz'){
+    let totalKw=0;
+    _servDepts.forEach(d=>{totalKw+=parseFloat(document.getElementById('kw-'+d.id)?.value||0);});
+    const bombaKw=parseFloat(document.getElementById('s-bomba-kw').value||0);
+    totalKw+=bombaKw;
+    const pxkw=totalKw>0?total/totalKw:0;
+    const bombaM=bombaKw*pxkw;
+    const bombaSelected=_servDepts.filter(d=>document.getElementById('bomba-'+d.id)?.checked);
+    const bombaPerDept=bombaSelected.length>0?bombaM/bombaSelected.length:0;
+    _servDepts.forEach(d=>{
+      const kw=parseFloat(document.getElementById('kw-'+d.id)?.value||0);
+      const bombaCk=document.getElementById('bomba-'+d.id)?.checked;
+      const monto=Math.round((kw*pxkw)+(bombaCk?bombaPerDept:0));
+      const extras=[];
+      if(bombaCk&&bombaPerDept>0) extras.push({concepto:'Bomba de agua',monto:Math.round(bombaPerDept)});
+      distribucion[d.id]={monto, kw, extras};
+    });
+  } else {
+    const metodo=document.querySelector('input[name="s-metodo-pct"]:checked')?.value||'pct';
+    let suma=0;
+    _servDepts.forEach(d=>{suma+=parseFloat(document.getElementById('pct-'+d.id)?.value||0);});
+    const factor=metodo==='pct'?suma/100:suma;
+    _servDepts.forEach(d=>{
+      const v=parseFloat(document.getElementById('pct-'+d.id)?.value||0);
+      const monto=total>0&&factor>0?Math.round((v/(metodo==='pct'?100:1))*total/factor):0;
+      const pct=metodo==='pct'?v:v*100;
+      distribucion[d.id]={monto, pct};
+    });
+  }
+  const s={id,tipo,periodo,total,metodo:tipo==='luz'?'kw':'porcentaje',distribucion,numero_boleta,fecha_vencimiento,fecha:new Date().toISOString().slice(0,10)};
+  await saveServ(s); cm('mo-serv'); renderServs();
+}
+
+async function renderServs(){
+  const el=document.getElementById('tbl-servs');
+  el.innerHTML='<div class="ld"><span class="sp"></span>Cargando...</div>';
+  const servs=await getServs();
+  let luz=0,gas=0,agua=0;
+  servs.forEach(s=>{if(s.tipo==='luz')luz+=s.total;if(s.tipo==='gas')gas+=s.total;if(s.tipo==='agua')agua+=s.total;});
+  document.getElementById('tot-luz').textContent=fmt(luz);
+  document.getElementById('tot-gas').textContent=fmt(gas);
+  document.getElementById('tot-agua').textContent=fmt(agua);
+  if(!servs.length){el.innerHTML='<p style="color:var(--tx2);padding:.5rem 0">Sin servicios cargados.</p>';return;}
+  let h=`<table><thead><tr><th>Tipo</th><th>Período</th><th>N° Boleta</th><th>Total</th><th>Vencimiento</th><th>Distribución</th><th>Acc.</th></tr></thead><tbody>`;
+  servs.forEach(s=>{
+    const ic={luz:'⚡',gas:'🔥',agua:'💧'};
+    const nd=Object.keys(s.distribucion||{}).length;
+    const dias=s.fecha_vencimiento?dvenc(s.fecha_vencimiento):null;
+    let vencBadge='';
+    if(dias!==null){
+      if(dias<0) vencBadge='<span class="bdg gray">Vencida</span>';
+      else if(dias<=5) vencBadge=`<span class="bdg red">Vence ${dias}d</span>`;
+      else if(dias<=15) vencBadge=`<span class="bdg amber">Vence ${dias}d</span>`;
+      else vencBadge=`<span class="bdg green">${fmtD(s.fecha_vencimiento)}</span>`;
+    }
+    h+=`<tr>
+    <td>${ic[s.tipo]||''} <strong>${s.tipo.charAt(0).toUpperCase()+s.tipo.slice(1)}</strong></td>
+    <td>${s.periodo||'—'}</td>
+    <td style="font-family:monospace;font-size:12px">${s.numero_boleta||'—'}</td>
+    <td>${fmt(s.total)}</td>
+    <td>${vencBadge||fmtD(s.fecha_vencimiento)}</td>
+    <td>${nd} depto${nd!==1?'s':''} — ${s.metodo}</td>
+    <td style="white-space:nowrap">
+      <button class="btn sm" onclick="verDetServ('${s.id}')"><i class="ti ti-eye"></i></button>
+      <button class="btn sm pri" style="margin-left:3px" onclick="editServ('${s.id}')"><i class="ti ti-edit"></i></button>
+      <button class="btn sm dan" style="margin-left:3px" onclick="if(confirm('¿Eliminar?'))delItem('servicios','servs','${s.id}').then(renderServs)"><i class="ti ti-trash"></i></button>
+    </td></tr>`;
+  });
+  el.innerHTML=h+'</tbody></table>';
+}
+
+async function verDetServ(id){
+  const [servs,depts]=await Promise.all([getServs(),getDepts()]);
+  const s=servs.find(x=>x.id===id);if(!s)return;
+  let rows='';
+  Object.entries(s.distribucion||{}).forEach(([did,v])=>{
+    const dept=depts.find(d=>d.id===did);
+    rows+=`<tr><td>${dept?dept.num:'?'}</td>`;
+    if(s.tipo==='luz') rows+=`<td>${v.kw||0} kWh</td>`;
+    else rows+=`<td>${v.pct||0}%</td>`;
+    rows+=`<td>${fmt(v.monto)}</td>`;
+    const extras=(v.extras||[]).map(e=>`<span class="bdg blue" style="margin-right:3px">${e.concepto}: ${fmt(e.monto)}</span>`).join('');
+    rows+=`<td>${extras||'—'}</td></tr>`;
+  });
+  const ic={luz:'⚡',gas:'🔥',agua:'💧'};
+  alert = undefined; // use modal instead
+  const html=`<div style="font-size:13px">
+    <p><strong>${ic[s.tipo]} ${s.tipo.toUpperCase()}</strong> — Período: ${s.periodo} — ${fmt(s.total)}</p>
+    ${s.numero_boleta?`<p>Boleta N°: ${s.numero_boleta}</p>`:''}
+    ${s.fecha_vencimiento?`<p>Vencimiento: ${fmtD(s.fecha_vencimiento)}</p>`:''}
+    <table style="margin-top:.5rem;width:100%"><thead><tr><th>Depto</th><th>${s.tipo==='luz'?'kWh':'%'}</th><th>Monto</th><th>Extras</th></tr></thead><tbody>${rows}</tbody></table>
+  </div>`;
+  document.getElementById('recibo-html').innerHTML=html;
+  om('mo-recibo');
+}
+
+async function editServ(id){
+  const [servs, depts] = await Promise.all([getServs(), getDepts()]);
+  const s = servs.find(x=>x.id===id);
+  if(!s) return;
+  // abrir modal como nuevo pero con datos cargados
+  _todosLosDepts = depts;
+  _servDepts = Object.keys(s.distribucion||{}).map(did=>depts.find(d=>d.id===did)).filter(Boolean);
+  // si no hay deptos en distribución, usar ocupados
+  if(!_servDepts.length) _servDepts = depts.filter(d=>d.estado==='ocupado');
+  document.getElementById('s-id').value = s.id;
+  document.getElementById('s-tipo').value = s.tipo;
+  document.getElementById('s-periodo').value = s.periodo;
+  document.getElementById('s-nbolt').value = s.numero_boleta||'';
+  document.getElementById('s-venc').value = s.fecha_vencimiento||'';
+  document.getElementById('s-total').value = s.total;
+  document.getElementById('s-bomba-kw').value = '';
+  document.getElementById('s-bomba-monto').value = '';
+  document.getElementById('nc-resultado').innerHTML = '';
+  // mostrar bloque correcto
+  document.getElementById('blk-luz').style.display = s.tipo==='luz'?'':'none';
+  document.getElementById('blk-gasagua').style.display = s.tipo!=='luz'?'':'none';
+  document.getElementById('blk-tipo-label').textContent = s.tipo==='gas'?'Gas':'Agua';
+  if(s.tipo==='luz'){
+    buildDistLuz();
+    // rellenar kWh guardados
+    setTimeout(()=>{
+      Object.entries(s.distribucion||{}).forEach(([did,v])=>{
+        const el=document.getElementById('kw-'+did);
+        if(el) el.value=v.kw||0;
+      });
+      recalcServ();
+    },50);
+  } else {
+    buildDistGasAgua();
+    setTimeout(()=>{
+      Object.entries(s.distribucion||{}).forEach(([did,v])=>{
+        const el=document.getElementById('pct-'+did);
+        if(el) el.value=v.pct||0;
+      });
+      recalcServ();
+    },50);
+  }
+  // mostrar info del depto encontrado
+  if(s.numero_boleta){
+    const campo={luz:'nc_luz',gas:'nc_gas',agua:'nc_agua'}[s.tipo];
+    const encontrados=depts.filter(d=>d[campo]&&d[campo].toString().trim()===s.numero_boleta.toString().trim());
+    if(encontrados.length){
+      const nombres=encontrados.map(d=>`<strong>Depto ${d.num}</strong>`).join(', ');
+      document.getElementById('nc-resultado').innerHTML=`<div class="al suc" style="padding:5px 10px;margin:0"><i class="ti ti-circle-check"></i> ${nombres}</div>`;
+    }
+  }
+  document.getElementById('mo-serv-title').innerHTML='<i class="ti ti-edit"></i> Editar Boleta';
+  om('mo-serv');
+}
+async function renderCobros(){
+  const el=document.getElementById('tbl-cobros');
+  el.innerHTML='<div class="ld"><span class="sp"></span>Calculando...</div>';
+  const mes=mesActual();
+  document.getElementById('cobros-per').textContent='Período: '+mes;
+  const [conts,depts,inqs,servs,pagos]=await Promise.all([getConts(),getDepts(),getInqs(),getServs(),getPagos(mes)]);
+  const activos=conts.filter(c=>c.estado==='activo');
+  if(!activos.length){el.innerHTML='<p style="color:var(--tx2);padding:.5rem 0">Sin contratos activos.</p>';return;}
+  const servMes=servs.filter(s=>s.periodo===mes);
+  const pagadosIds=new Set(pagos.filter(p=>p.estado==='pagado').map(p=>p.contrato_id));
+  let totalGen=0;
+  let h=`<table><thead><tr><th>Dpto</th><th>Inquilino</th><th>Alquiler</th><th>⚡ Luz</th><th>🔥 Gas</th><th>💧 Agua</th><th>🏛️ ABL</th><th>🏙️ Mun.</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>`;
+  activos.forEach(c=>{
+    const dept=depts.find(d=>d.id===c.dept_id);
+    const inq=inqs.find(i=>i.id===c.inq_id);
+    let luz=0,gas=0,agua=0,abl=0,mun=0;
+    servMes.forEach(s=>{
+      const v=parseFloat(s.distribucion?.[c.dept_id]?.monto||0);
+      if(s.tipo==='luz')luz+=v;
+      if(s.tipo==='gas')gas+=v;
+      if(s.tipo==='agua')agua+=v;
+      if(s.tipo==='abl')abl+=v;
+      if(s.tipo==='municipal')mun+=v;
+    });
+    const total=c.monto+luz+gas+agua+abl+mun;
+    totalGen+=total;
+    const pagado=pagadosIds.has(c.id);
+    h+=`<tr style="${pagado?'opacity:.6':''}">
+    <td><strong>${dept?dept.num:'?'}</strong></td>
+    <td>${inq?inq.nombre+' '+inq.apellido:'?'}</td>
+    <td>${fmt(c.monto)}</td>
+    <td>${luz>0?fmt(luz):'<span style="color:var(--tx3)">—</span>'}</td>
+    <td>${gas>0?fmt(gas):'<span style="color:var(--tx3)">—</span>'}</td>
+    <td>${agua>0?fmt(agua):'<span style="color:var(--tx3)">—</span>'}</td>
+    <td>${abl>0?fmt(abl):'<span style="color:var(--tx3)">—</span>'}</td>
+    <td>${mun>0?fmt(mun):'<span style="color:var(--tx3)">—</span>'}</td>
+    <td style="font-weight:700">${fmt(total)}</td>
+    <td>${pagado?'<span class="bdg green">✓ Pagado</span>':'<span class="bdg amber">Pendiente</span>'}</td>
+    <td style="white-space:nowrap;display:flex;gap:4px">
+      <button class="btn sm pri" onclick="verRecibo('${c.id}')" title="Ver cuenta detallada"><i class="ti ti-receipt"></i> Cuenta</button>
+      ${!pagado?`<button class="btn sm suc" onclick="marcarPagadoDesde('${c.id}','${mes}',${total})"><i class="ti ti-check"></i> Pagado</button>`:`<button class="btn sm" onclick="verReciboPago('${c.id}','${mes}')"><i class="ti ti-file-check"></i> Recibo</button>`}
+    </td></tr>`;
+  });
+  h+=`</tbody><tfoot><tr style="background:var(--bg2)"><td colspan="9" style="padding:9px;font-weight:600">Total general del mes</td><td></td><td style="padding:9px;font-weight:700;font-size:15px">${fmt(totalGen)}</td></tr></tfoot></table>`;
+  el.innerHTML=h;
+}
+
+async function verRecibo(contId){
+  const mes=mesActual();
+  await _buildRecibo(contId, mes, false);
+  om('mo-recibo');
+}
+
+async function verReciboPago(contId, mes){
+  await _buildRecibo(contId, mes, true);
+  om('mo-recibo');
+}
+
+async function _buildRecibo(contId, mes, esPago){
+  const [conts,depts,inqs,servs,pagos]=await Promise.all([getConts(),getDepts(),getInqs(),getServs(),getPagos(mes)]);
+  const c=conts.find(x=>x.id===contId);if(!c)return;
+  const dept=depts.find(d=>d.id===c.dept_id);
+  const inq=inqs.find(i=>i.id===c.inq_id);
+  const servMes=servs.filter(s=>s.periodo===mes);
+  const pago=pagos.find(p=>p.contrato_id===contId&&p.periodo===mes);
+  const cfg=gc();
+  const hoy=new Date().toLocaleDateString('es-AR');
+
+  let rows=`<tr><td>Alquiler mensual</td><td style="text-align:right">${fmt(c.monto)}</td></tr>`;
+  let totalServ=0;
+  const tipoIcon={luz:'⚡',gas:'🔥',agua:'💧',abl:'🏛️',municipal:'🏙️'};
+  const tipoLabel={luz:'Luz',gas:'Gas',agua:'Agua',abl:'ABL',municipal:'Imp. Municipal'};
+  servMes.forEach(s=>{
+    const dist=s.distribucion?.[c.dept_id];
+    if(!dist||!dist.monto)return;
+    const ncMap={luz:dept?.nc_luz,gas:dept?.nc_gas,agua:dept?.nc_agua,abl:dept?.nc_abl,municipal:dept?.nc_municipal};
+    const nc=ncMap[s.tipo];
+    const ncStr=nc?` <span style="font-size:11px;color:#888">(N°${nc})</span>`:'';
+    rows+=`<tr><td>${tipoIcon[s.tipo]||''} ${tipoLabel[s.tipo]||s.tipo}${ncStr}`;
+    if(s.tipo==='luz'&&dist.kw) rows+=` — ${dist.kw} kWh`;
+    if(['gas','agua','abl','municipal'].includes(s.tipo)&&dist.pct) rows+=` — ${dist.pct}%`;
+    rows+=`</td><td style="text-align:right">${fmt(dist.monto)}</td></tr>`;
+    (dist.extras||[]).forEach(e=>{
+      rows+=`<tr><td style="padding-left:18px;font-size:12px;color:#777">└ ${e.concepto}</td><td style="text-align:right;font-size:12px;color:#777">${fmt(e.monto)}</td></tr>`;
+    });
+    totalServ+=dist.monto;
+  });
+  const total=c.monto+totalServ;
+  rows+=`<tr class="tr-tot"><td><strong>${esPago?'TOTAL PAGADO':'TOTAL A PAGAR'}</strong></td><td style="text-align:right"><strong>${fmt(total)}</strong></td></tr>`;
+
+  const pagoInfo=esPago&&pago?`
+    <div style="margin:10px 0;padding:8px 12px;background:#EDF7DC;border-radius:6px;border:1px solid #B8E080;text-align:center">
+      <strong style="color:#3D6E10;font-size:14px">✓ PAGO REGISTRADO</strong><br>
+      <span style="font-size:12px;color:#4A7C1F">Fecha de pago: ${fmtD(pago.fecha_pago)}</span>
+    </div>`:'';
+
+  document.getElementById('recibo-html').innerHTML=`
+  <div class="rcpt">
+    <div class="rcpt-hdr">
+      <div class="rcpt-title">${cfg.nombre||'ADMINISTRACIÓN'}</div>
+      <div class="rcpt-sub">${cfg.dir||''} ${cfg.cuit?'· CUIT: '+cfg.cuit:''}</div>
+    </div>
+    <p style="font-size:12px;margin-bottom:8px"><strong>${esPago?'RECIBO DE PAGO':'CUENTA MENSUAL'} — PERÍODO ${mes}</strong></p>
+    <table style="width:100%;margin-bottom:10px;font-size:13px;border-collapse:collapse">
+      <tr><td style="width:130px;padding:3px 0"><strong>Inquilino:</strong></td><td>${inq?inq.nombre+' '+inq.apellido:'—'}</td></tr>
+      <tr><td><strong>DNI / CUIL:</strong></td><td>${inq?.dni||'—'}</td></tr>
+      <tr><td><strong>Teléfono:</strong></td><td>${inq?.telefono||'—'}</td></tr>
+      <tr><td><strong>Departamento:</strong></td><td>Depto ${dept?dept.num:'?'}${dept?.piso?' · Piso '+dept.piso:''}</td></tr>
+      <tr><td><strong>Período:</strong></td><td>${mes}</td></tr>
+      <tr><td><strong>Fecha emisión:</strong></td><td>${hoy}</td></tr>
+      <tr><td><strong>Vto. contrato:</strong></td><td>${fmtD(c.fecha_fin)}</td></tr>
+    </table>
+    ${pagoInfo}
+    <table style="width:100%;border-collapse:collapse;font-size:13px;border-top:1px solid #ccc">
+      <thead><tr style="border-bottom:1px solid #ccc"><th style="padding:6px 0;text-align:left">Concepto</th><th style="text-align:right">Importe</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="font-size:10px;color:#888;margin-top:12px;text-align:center;border-top:1px dashed #ccc;padding-top:7px">Emitido el ${hoy} · ${cfg.tel||''} · ADMDPART</p>
+  </div>`;
+}
+
+// ─── Pagos ──────────────────────────────────────────────
+async function renderPagos(){
+  const el=document.getElementById('tbl-pagos');
+  el.innerHTML='<div class="ld"><span class="sp"></span>Cargando...</div>';
+  const per=document.getElementById('pagos-periodo').value||mesActual();
+  const [conts,depts,inqs,servs,pagos]=await Promise.all([getConts(),getDepts(),getInqs(),getServs(),getPagos(per)]);
+  const activos=conts.filter(c=>c.estado==='activo');
+  const servMes=servs.filter(s=>s.periodo===per);
+  if(!activos.length){el.innerHTML='<p style="color:var(--tx2);padding:.5rem 0">Sin contratos activos para este período.</p>';return;}
+  let pagados=0, pendientes=0, totalMes=0;
+  activos.forEach(c=>{
+    let serv=0; servMes.forEach(s=>{serv+=parseFloat(s.distribucion?.[c.dept_id]?.monto||0);});
+    totalMes+=c.monto+serv;
+    const pago=pagos.find(p=>p.contrato_id===c.id&&p.periodo===per);
+    if(pago?.estado==='pagado') pagados++; else pendientes++;
+  });
+  let h=`<div style="display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
+    <div class="mt" style="flex:1;min-width:120px"><div class="mt-l">✓ Pagados</div><div class="mt-v" style="color:var(--greentx)">${pagados}</div></div>
+    <div class="mt" style="flex:1;min-width:120px"><div class="mt-l">⏳ Pendientes</div><div class="mt-v" style="color:var(--ambertx)">${pendientes}</div></div>
+    <div class="mt" style="flex:1;min-width:120px"><div class="mt-l">Total del mes</div><div class="mt-v">${fmt(totalMes)}</div></div>
+  </div>`;
+  h+=`<table><thead><tr><th>Dpto</th><th>Inquilino</th><th>Alquiler</th><th>Servicios</th><th>Total</th><th>Estado</th><th>Fecha pago</th><th>Acciones</th></tr></thead><tbody>`;
+  activos.forEach(c=>{
+    const dept=depts.find(d=>d.id===c.dept_id);
+    const inq=inqs.find(i=>i.id===c.inq_id);
+    let serv=0;
+    servMes.forEach(s=>{serv+=parseFloat(s.distribucion?.[c.dept_id]?.monto||0);});
+    const total=c.monto+serv;
+    const pago=pagos.find(p=>p.contrato_id===c.id&&p.periodo===per);
+    const estado=pago?.estado||'pendiente';
+    const bmap={pagado:'green',pendiente:'amber'};
+    h+=`<tr style="${estado==='pagado'?'opacity:.65':''}">
+    <td><strong>${dept?dept.num:'?'}</strong></td>
+    <td>${inq?inq.nombre+' '+inq.apellido:'?'}</td>
+    <td>${fmt(c.monto)}</td><td>${fmt(serv)}</td>
+    <td style="font-weight:700">${fmt(total)}</td>
+    <td><span class="bdg ${bmap[estado]||'gray'}">${estado==='pagado'?'✓ Pagado':'Pendiente'}</span></td>
+    <td>${pago?.fecha_pago?fmtD(pago.fecha_pago):'—'}</td>
+    <td style="white-space:nowrap;display:flex;gap:4px">
+      ${estado!=='pagado'?`<button class="btn sm suc" onclick="marcarPagado('${c.id}','${per}',${total})"><i class="ti ti-check"></i> Marcar pagado</button>`:''}
+      ${estado==='pagado'?`<button class="btn sm pri" onclick="verReciboPago('${c.id}','${per}')"><i class="ti ti-file-check"></i> Recibo</button>`:''}
+      ${estado==='pagado'?`<button class="btn sm" onclick="marcarPendiente('${c.id}','${per}')"><i class="ti ti-rotate"></i></button>`:''}
+    </td></tr>`;
+  });
+  el.innerHTML=h+'</tbody></table>';
+}
+async function marcarPagadoDesde(contId,per,total){
+  await marcarPagado(contId,per,total);
+  renderCobros();
+}
+async function marcarPagado(contId,per,total){
+  const conts=await getConts();
+  const c=conts.find(x=>x.id===contId);
+  const pago={id:uid(),dept_id:c?.dept_id||'',contrato_id:contId,periodo:per,total,estado:'pagado',fecha_pago:new Date().toISOString().slice(0,10)};
+  await savePago(pago); renderPagos(); renderDash();
+}
+async function marcarPendiente(contId,per){
+  const pagos=await getPagos(per);
+  const p=pagos.find(x=>x.contrato_id===contId&&x.periodo===per);
+  if(p){await delItem('pagos','pagos',p.id);} renderPagos(); renderDash();
+}
+
+// ─── Mantenimiento ──────────────────────────────────────
+async function fillDeptSelect(sid, withComun=false){
+  const depts=await getDepts();
+  const s=document.getElementById(sid);
+  if(!s)return;
+  s.innerHTML=(withComun?'<option value="">Todos</option>':'<option value="comun">Áreas comunes</option>');
+  if(!withComun) depts.forEach(d=>s.innerHTML+=`<option value="${d.id}">${d.num}</option>`);
+  else depts.forEach(d=>s.innerHTML+=`<option value="${d.id}">${d.num}</option>`);
+}
+async function abrirMant(dept=null){
+  await fillDeptSelect('mt-dept',false);
+  document.getElementById('mt-id').value='';
+  document.getElementById('mt-monto').value='';
+  document.getElementById('mt-desc').value='';
+  document.getElementById('mt-prov').value='';
+  document.getElementById('mt-fecha').value=new Date().toISOString().slice(0,10);
+  if(dept) document.getElementById('mt-dept').value=dept;
+  om('mo-mant');
+}
+async function guardarMant(){
+  const id=document.getElementById('mt-id').value||uid();
+  const monto=parseFloat(document.getElementById('mt-monto').value)||0;
+  const desc=document.getElementById('mt-desc').value.trim();
+  if(!monto||!desc){alert('Ingresá monto y descripción');return;}
+  const m={id,dept_id:document.getElementById('mt-dept').value,fecha:document.getElementById('mt-fecha').value,categoria:document.getElementById('mt-cat').value,monto,descripcion:desc,proveedor:document.getElementById('mt-prov').value};
+  await saveMant(m);
+  // si vino de completar una tarea pendiente, eliminarla
+  const tareaId=document.getElementById('mo-mant').dataset.tareaId;
+  if(tareaId){ await delTarea(tareaId); delete document.getElementById('mo-mant').dataset.tareaId; }
+  cm('mo-mant'); renderMantAll(); renderMantPend();
+}
+function mantRow(m, depts){
+  const dept=depts.find(d=>d.id===m.dept_id);
+  const area=dept?dept.num:m.dept_id==='comun'?'<span class="bdg gray">Común</span>':'?';
+  return `<tr>
+    <td>${fmtD(m.fecha)}</td>
+    <td>${area}</td>
+    <td><span class="bdg gray">${m.categoria||'—'}</span></td>
+    <td>${m.descripcion||'—'}</td>
+    <td>${m.proveedor||'—'}</td>
+    <td>${fmt(m.monto)}</td>
+    <td><button class="btn sm dan" onclick="if(confirm('¿Eliminar?'))delItem('mantenimiento','mants','${m.id}').then(renderMantAll)"><i class="ti ti-trash"></i></button></td>
+  </tr>`;
+}
+async function renderMantAll(){
+  const el=document.getElementById('tbl-mant-all');
+  el.innerHTML='<div class="ld"><span class="sp"></span>Cargando...</div>';
+  const [mants,depts]=await Promise.all([getMants(),getDepts()]);
+  let total=0; mants.forEach(m=>total+=m.monto);
+  if(!mants.length){el.innerHTML='<p style="color:var(--tx2);padding:.5rem 0">Sin registros.</p>';return;}
+  let h=`<p style="font-size:13px;color:var(--tx2);margin-bottom:.75rem">Total registrado: <strong>${fmt(total)}</strong></p>
+  <table><thead><tr><th>Fecha</th><th>Área</th><th>Categoría</th><th>Descripción</th><th>Proveedor</th><th>Monto</th><th>Acc.</th></tr></thead><tbody>`;
+  mants.forEach(m=>h+=mantRow(m,depts));
+  el.innerHTML=h+'</tbody></table>';
+}
+async function renderMantDept(){
+  const deptId=document.getElementById('mant-filter-dept').value;
+  const el=document.getElementById('tbl-mant-dept');
+  if(!deptId){el.innerHTML='<p style="color:var(--tx2);font-size:13px">Seleccioná un departamento.</p>';return;}
+  el.innerHTML='<div class="ld"><span class="sp"></span>Cargando...</div>';
+  const [mants,depts]=await Promise.all([getMants(),getDepts()]);
+  const dept=depts.find(d=>d.id===deptId);
+  const filtrados=mants.filter(m=>m.dept_id===deptId);
+  let total=0; filtrados.forEach(m=>total+=m.monto);
+  if(!filtrados.length){el.innerHTML=`<div class="al info"><i class="ti ti-info-circle"></i> Sin registros de mantenimiento para ${dept?dept.num:'este departamento'}.</div><button class="btn pri" onclick="abrirMant('${deptId}')"><i class="ti ti-plus"></i> Agregar gasto</button>`;return;}
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+    <p style="font-size:13px;color:var(--tx2)">Depto <strong>${dept?dept.num:'?'}</strong> — Total: <strong>${fmt(total)}</strong></p>
+    <button class="btn sm pri" onclick="abrirMant('${deptId}')"><i class="ti ti-plus"></i> Agregar</button>
+  </div>
+  <table><thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Proveedor</th><th>Monto</th><th>Acc.</th></tr></thead><tbody>`;
+  filtrados.forEach(m=>{
+    h+=`<tr><td>${fmtD(m.fecha)}</td><td><span class="bdg gray">${m.categoria||'—'}</span></td><td>${m.descripcion||'—'}</td><td>${m.proveedor||'—'}</td><td>${fmt(m.monto)}</td>
+    <td><button class="btn sm dan" onclick="if(confirm('¿Eliminar?'))delItem('mantenimiento','mants','${m.id}').then(renderMantDept)"><i class="ti ti-trash"></i></button></td></tr>`;
+  });
+  el.innerHTML=h+'</tbody></table>';
+}
+
+// ─── Dashboard ──────────────────────────────────────────
+async function renderDash(){
+  const [depts,conts,inqs,servs,pagos]=await Promise.all([getDepts(),getConts(),getInqs(),getServs(),getPagos(mesActual())]);
+  const tot=depts.length, ocup=depts.filter(d=>d.estado==='ocupado').length;
+  const activos=conts.filter(c=>c.estado==='activo');
+  const vencen=activos.filter(c=>{const d=dvenc(c.fecha_fin);return d>0&&d<=30;}).length;
+  document.getElementById('m-depts').textContent=tot;
+  document.getElementById('m-ocup').textContent=ocup;
+  document.getElementById('m-pct').textContent=tot?Math.round(ocup/tot*100)+'% ocupación':'';
+  document.getElementById('m-cont').textContent=activos.length;
+  document.getElementById('m-venc').textContent=vencen;
+  const cfg=gc();
+  document.getElementById('dash-sub').textContent=cfg.nombre||'Resumen general';
+  // setup warning
+  document.getElementById('setup-warn').innerHTML='';
+  // alerts contratos
+  const ab=document.getElementById('alerts-box'); ab.innerHTML='';
+  activos.filter(c=>{const d=dvenc(c.fecha_fin);return d>0&&d<=30;}).forEach(c=>{
+    const dept=depts.find(d=>d.id===c.dept_id), inq=inqs.find(i=>i.id===c.inq_id);
+    const dias=dvenc(c.fecha_fin);
+    ab.innerHTML+=`<div class="al ${dias<=7?'dan':'warn'}"><i class="ti ti-bell"></i><span>Contrato <strong>${dept?dept.num:'?'}</strong> — ${inq?inq.nombre+' '+inq.apellido:'?'} vence en <strong>${dias} días</strong> (${fmtD(c.fecha_fin)}). <button class="btn sm" onclick="abrirAum('${c.id}',${c.monto},${c.pct_aumento||0})" style="margin-left:7px">Aplicar aumento ↗</button></span></div>`;
+  });
+  // vencimientos contratos
+  const dv=document.getElementById('dash-venc');
+  const prox=activos.filter(c=>{const d=dvenc(c.fecha_fin);return d>0&&d<=60;}).slice(0,5);
+  if(!prox.length) dv.innerHTML='<p style="color:var(--tx2);font-size:13px">Sin vencimientos próximos</p>';
+  else dv.innerHTML=prox.map(c=>{
+    const dept=depts.find(d=>d.id===c.dept_id),inq=inqs.find(i=>i.id===c.inq_id),d=dvenc(c.fecha_fin);
+    return `<div class="vb-row"><div><div style="font-size:13px;font-weight:500">${dept?dept.num:'?'}</div><div style="font-size:12px;color:var(--tx2)">${inq?inq.nombre+' '+inq.apellido:'?'}</div></div><span class="bdg ${d<=7?'red':'amber'}">${d}d — ${fmtD(c.fecha_fin)}</span></div>`;
+  }).join('');
+  // vencimientos boletas
+  const db=document.getElementById('dash-boletas');
+  const prox30=servs.filter(s=>s.fecha_vencimiento&&dvenc(s.fecha_vencimiento)<=30&&dvenc(s.fecha_vencimiento)>-3).sort((a,b)=>dvenc(a.fecha_vencimiento)-dvenc(b.fecha_vencimiento)).slice(0,6);
+  if(!prox30.length) db.innerHTML='<p style="color:var(--tx2);font-size:13px">Sin boletas próximas a vencer</p>';
+  else db.innerHTML=prox30.map(s=>{
+    const ic={luz:'⚡',gas:'🔥',agua:'💧'};
+    const dias=dvenc(s.fecha_vencimiento);
+    const b=dias<=0?'gray':dias<=5?'red':dias<=10?'amber':'green';
+    return `<div class="vb-row"><div><div style="font-size:13px;font-weight:500">${ic[s.tipo]||''} ${s.tipo.charAt(0).toUpperCase()+s.tipo.slice(1)} — ${s.periodo}</div>${s.numero_boleta?`<div style="font-size:11px;color:var(--tx2)">N° ${s.numero_boleta}</div>`:''}</div><span class="bdg ${b}">${dias<=0?'Vencida':dias+'d — '+fmtD(s.fecha_vencimiento)}</span></div>`;
+  }).join('');
+  // estado pagos
+  const dp=document.getElementById('dash-pagos');
+  const pagadosIds=new Set(pagos.filter(p=>p.estado==='pagado').map(p=>p.contrato_id));
+  const filas=activos.map(c=>{
+    const dept=depts.find(d=>d.id===c.dept_id),inq=inqs.find(i=>i.id===c.inq_id);
+    const ok=pagadosIds.has(c.id);
+    return `<div class="vb-row"><div><div style="font-size:13px;font-weight:500">${dept?dept.num:'?'}</div><div style="font-size:12px;color:var(--tx2)">${inq?inq.nombre+' '+inq.apellido:'?'}</div></div><span class="bdg ${ok?'green':'amber'}">${ok?'✓ Pagado':'Pendiente'}</span></div>`;
+  });
+  dp.innerHTML=filas.length?filas.join(''):'<p style="color:var(--tx2);font-size:13px">Sin contratos activos</p>';
+  // dept grid
+  const dg=document.getElementById('dash-dg');
+  dg.innerHTML=depts.length?depts.map(d=>{
+    const cont=activos.find(c=>c.dept_id===d.id);
+    const inq=cont?inqs.find(i=>i.id===cont.inq_id):null;
+    const b=d.estado==='ocupado'?'green':d.estado==='disponible'?'blue':'amber';
+    return `<div class="dc" onclick="showPage('departamentos',null)">
+      <div style="display:flex;justify-content:space-between"><span class="bdg ${b}" style="font-size:10px">${d.estado}</span><span style="font-size:11px;color:var(--tx3)">${d.superficie||'?'}m²</span></div>
+      <div style="font-size:14px;font-weight:600;margin-top:5px">Dpto ${d.num}</div>
+      <div style="font-size:12px;color:var(--tx2);margin-top:2px">${inq?inq.nombre+' '+inq.apellido:'Disponible'}</div>
+      ${cont?`<div style="font-size:12px;color:var(--tx2);margin-top:4px;font-weight:500">${fmt(cont.monto)}/mes</div>`:''}
+    </div>`;
+  }).join(''):'<p style="color:var(--tx2);font-size:13px">Sin departamentos registrados</p>';
+}
+
+// ─── Protección de Configuración ────────────────────────
+// Para cambiar la contraseña, modificá la línea de abajo:
+const ADMIN_PASS = 'Puan5548';
+let _cfgUnlocked = false;
+
+function pedirClave(el) {
+  if (_cfgUnlocked) { showPage('configuracion', el); return; }
+  document.getElementById('mo-clave').classList.add('open');
+  document.getElementById('clave-input').value='';
+  document.getElementById('clave-err').textContent='';
+  // guardamos ref al nav item para activarlo después
+  document.getElementById('mo-clave').dataset.navEl = '';
+  _pendingNavEl = el;
+  setTimeout(()=>document.getElementById('clave-input').focus(), 100);
+}
+let _pendingNavEl = null;
+function verificarClave() {
+  const v = document.getElementById('clave-input').value;
+  if (v === ADMIN_PASS) {
+    _cfgUnlocked = true;
+    document.getElementById('mo-clave').classList.remove('open');
+    showPage('configuracion', _pendingNavEl);
+    // auto-lock después de 10 minutos
+    setTimeout(()=>{ _cfgUnlocked=false; }, 10*60*1000);
+  } else {
+    document.getElementById('clave-err').textContent = 'Contraseña incorrecta';
+    document.getElementById('clave-input').value='';
+    document.getElementById('clave-input').focus();
+  }
+}
+document.addEventListener('keydown', e => {
+  if (e.key==='Enter' && document.getElementById('mo-clave').classList.contains('open')) verificarClave();
+});
+
+// ─── Init ────────────────────────────────────────────────
+initSB();
+document.getElementById('pagos-periodo').value=mesActual();
+renderDash();
+</script>
+</body>
+</html>
