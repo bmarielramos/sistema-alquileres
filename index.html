@@ -1123,7 +1123,17 @@ async function getPagos(periodo) {
 
 async function saveDept(d) { if (!sb) { lsUpsert('depts',d); return; } await sb.from('departamentos').upsert(d); }
 async function saveInq(i) { if (!sb) { lsUpsert('inqs',i); return; } await sb.from('inquilinos').upsert(i); }
-async function saveCont(c) { if (!sb) { lsUpsert('conts',c); return; } await sb.from('contratos').upsert(c); }
+async function saveCont(c) {
+  if (!sb) { lsUpsert('conts',c); return; }
+  let {error} = await sb.from('contratos').upsert(c);
+  if (error && error.message && error.message.includes('rol')) {
+    // columna 'rol' no existe en la tabla, guardar sin ella
+    const {rol, ...sinRol} = c;
+    const res2 = await sb.from('contratos').upsert(sinRol);
+    error = res2.error;
+  }
+  if (error) { console.error('Error guardando contrato:', error); alert('Error al guardar contrato: ' + error.message); }
+}
 async function saveServ(s) { if (!sb) { lsUpsert('servs',s); return; } await sb.from('servicios').upsert(s); }
 async function saveMant(m) { if (!sb) { lsUpsert('mants',m); return; } await sb.from('mantenimiento').upsert(m); }
 
@@ -1465,7 +1475,19 @@ async function guardarCont(){
   const monto=parseFloat(document.getElementById('c-monto').value)||0;
   if(!dept_id||!inq_id){alert('Elegí departamento y persona (*)');return;}
   if(!esProp&&(!fecha_inicio||!monto)){alert('Completá fecha inicio y alquiler (*)');return;}
-  const c={id,dept_id,inq_id,rol,fecha_inicio:fecha_inicio||null,fecha_fin:fecha_fin||null,monto:esProp?0:monto,deposito:esProp?0:(parseFloat(document.getElementById('c-dep').value)||0),pct_aumento:esProp?0:(parseFloat(document.getElementById('c-aum').value)||0),periodo_aumento:esProp?0:parseInt(document.getElementById('c-per').value),clausulas:document.getElementById('c-claus').value,estado:'activo'};
+  const clausulas = document.getElementById('c-claus').value;
+  const c={
+    id, dept_id, inq_id, rol,
+    fecha_inicio: fecha_inicio||null,
+    fecha_fin: fecha_fin||null,
+    monto: esProp?0:monto,
+    deposito: esProp?0:(parseFloat(document.getElementById('c-dep').value)||0),
+    pct_aumento: esProp?0:(parseFloat(document.getElementById('c-aum').value)||0),
+    periodo_aumento: esProp?null:parseInt(document.getElementById('c-per').value)||12,
+    clausulas: esProp ? '[Propietario]' + (clausulas?' — '+clausulas:'') : clausulas,
+    estado: 'activo'
+  };
+  // Si la columna 'rol' no existe en Supabase, intentar sin ella
   await saveCont(c);
   const depts=await getDepts();
   const dept=depts.find(d=>d.id===dept_id);
