@@ -200,14 +200,18 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
   <div class="ns">
     <div class="nl">Principal</div>
     <div class="ni active" onclick="showPage('dashboard',this)"><i class="ti ti-dashboard"></i> <span class="nav-txt">Dashboard</span></div>
-    <div class="ni" onclick="showPage('departamentos',this)"><i class="ti ti-building-skyscraper"></i> <span class="nav-txt">Deptos</span></div>
-    <div class="ni" onclick="showPage('inquilinos',this)"><i class="ti ti-users"></i> <span class="nav-txt">Inquilinos</span></div>
+    <div class="ni" onclick="showPage('departamentos',this)"><i class="ti ti-building-skyscraper"></i> <span class="nav-txt">Departamentos</span></div>
+    <div class="ni" onclick="showPage('inquilinos',this)"><i class="ti ti-users"></i> <span class="nav-txt">Datos Inquilinos</span></div>
     <div class="ni" onclick="showPage('contratos',this)"><i class="ti ti-file-text"></i> <span class="nav-txt">Contratos</span></div>
   </div>
   <div class="ns">
-    <div class="nl">Finanzas</div>
-    <div class="ni" onclick="showPage('servicios',this)"><i class="ti ti-bolt"></i> <span class="nav-txt">Servicios</span></div>
+    <div class="nl">Boletas</div>
+    <div class="ni" onclick="showPage('datos-servicios',this)"><i class="ti ti-database"></i> <span class="nav-txt">Datos Servicios</span></div>
+    <div class="ni" onclick="showPage('cargar-boleta',this)"><i class="ti ti-bolt"></i> <span class="nav-txt">Cargar Boleta</span></div>
     <div class="ni" onclick="showPage('historial',this)"><i class="ti ti-history"></i> <span class="nav-txt">Hist. Boletas</span></div>
+  </div>
+  <div class="ns">
+    <div class="nl">Finanzas</div>
     <div class="ni" onclick="showPage('cobros',this)"><i class="ti ti-receipt"></i> <span class="nav-txt">Cobros</span></div>
     <div class="ni" onclick="showPage('pagos',this)"><i class="ti ti-circle-check"></i> <span class="nav-txt">Pagos</span></div>
     <div class="ni" onclick="showPage('mantenimiento',this)"><i class="ti ti-tools"></i> <span class="nav-txt">Manten.</span></div>
@@ -280,9 +284,11 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
 </div>
 
 <!-- SERVICIOS -->
-<div id="page-servicios" class="page">
-  <div class="ph"><div><h1>Servicios</h1><p>Boletas de Luz · Gas · Agua</p></div>
-    <button class="btn pri" onclick="abrirServ()"><i class="ti ti-plus"></i> Cargar Boleta</button>
+<!-- DATOS SERVICIOS -->
+<div id="page-datos-servicios" class="page">
+  <div class="ph">
+    <div><h1>Datos de Servicios</h1><p>Información fija de cada cuenta: número, titular, inquilinos, forma de distribución</p></div>
+    <button class="btn pri" onclick="abrirDatoServ()"><i class="ti ti-plus"></i> Nuevo Servicio</button>
   </div>
   <div class="mg">
     <div class="mt"><div class="mt-l">⚡ Luz total</div><div class="mt-v" id="tot-luz">$0</div></div>
@@ -291,7 +297,184 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
     <div class="mt"><div class="mt-l">🌐 Internet total</div><div class="mt-v" id="tot-internet">$0</div></div>
     <div class="mt"><div class="mt-l">📺 Streaming total</div><div class="mt-v" id="tot-streaming">$0</div></div>
   </div>
-  <div class="card"><div id="tbl-servs"><div class="ld"><span class="sp"></span>Cargando...</div></div></div>
+  <div class="card"><div id="tbl-datos-servs"><div class="ld"><span class="sp"></span>Cargando...</div></div></div>
+</div>
+
+<!-- MODAL DATO SERVICIO -->
+<div class="mo" id="mo-dato-serv">
+<div class="mbox" style="width:680px">
+  <h2 id="mo-dato-serv-title"><i class="ti ti-database"></i> Nuevo Servicio</h2>
+  <input type="hidden" id="ds-id">
+  <div class="fg3">
+    <div class="fg">
+      <label>Tipo *</label>
+      <select id="ds-tipo">
+        <option value="luz">⚡ Luz</option>
+        <option value="gas">🔥 Gas</option>
+        <option value="agua">💧 Agua</option>
+        <option value="bomba">💡 Bomba de agua</option>
+        <option value="abl">🏛️ ABL</option>
+        <option value="municipal">🏙️ Imp. Municipal</option>
+        <option value="internet">🌐 Internet</option>
+        <option value="streaming">📺 Streaming</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>N° de cuenta / cliente *</label>
+      <input id="ds-cuenta" type="text" placeholder="Ej: 4855, 948, 430459/5...">
+    </div>
+    <div class="fg">
+      <label>Titular</label>
+      <input id="ds-titular" type="text" placeholder="Ej: Di Giorgio Rosa">
+    </div>
+  </div>
+  <div class="fg2">
+    <div class="fg">
+      <label>Empresa / Proveedor</label>
+      <input id="ds-empresa" type="text" placeholder="Ej: Edenor, Naturgy, AySA, Claro...">
+    </div>
+    <div class="fg">
+      <label>Dirección asociada</label>
+      <input id="ds-direccion" type="text" placeholder="Ej: Puan 5548, Puan 5554...">
+    </div>
+  </div>
+  <div class="fg">
+    <label>Departamentos que comparten este servicio</label>
+    <div id="ds-depts-check" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;padding:10px;background:var(--bg2);border-radius:var(--r)"></div>
+  </div>
+  <div class="fg2">
+    <div class="fg">
+      <label>Forma de distribución</label>
+      <select id="ds-distrib">
+        <option value="medidor">Por medidor individual (kWh)</option>
+        <option value="partes-iguales">Partes iguales</option>
+        <option value="porcentaje">Por porcentaje fijo</option>
+        <option value="unico">Pago único (no se divide)</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Vencimiento habitual (día del mes)</label>
+      <input id="ds-dia-venc" type="number" placeholder="Ej: 10" min="1" max="31">
+    </div>
+  </div>
+  <div class="fg">
+    <label>Notas / Observaciones</label>
+    <textarea id="ds-notas" rows="2" placeholder="Ej: Desde 2026 es mensual (antes bimestral). Medidor 1=Maria, 2=Rocio..."></textarea>
+  </div>
+  <div class="mac">
+    <button class="btn" onclick="cm('mo-dato-serv')">Cancelar</button>
+    <button class="btn pri" onclick="guardarDatoServ()"><i class="ti ti-device-floppy"></i> Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- CARGAR BOLETA -->
+<div id="page-cargar-boleta" class="page">
+  <div class="ph">
+    <div><h1>Cargar Boleta</h1><p>Registrá el monto de cada factura y distribuila entre los inquilinos</p></div>
+  </div>
+  <div class="card" style="max-width:900px">
+    <!-- Paso 1: elegir tipo y cuenta -->
+    <div class="stl">Paso 1 — Elegí el tipo de servicio y la cuenta</div>
+    <div class="fg3" style="margin-bottom:1rem">
+      <div class="fg">
+        <label>Tipo de servicio *</label>
+        <select id="cb-tipo" onchange="cargarCuentasPorTipo()">
+          <option value="">Seleccionar...</option>
+          <option value="luz">⚡ Luz</option>
+          <option value="gas">🔥 Gas</option>
+          <option value="agua">💧 Agua</option>
+          <option value="bomba">💡 Bomba de agua</option>
+          <option value="abl">🏛️ ABL</option>
+          <option value="municipal">🏙️ Imp. Municipal</option>
+          <option value="internet">🌐 Internet</option>
+          <option value="streaming">📺 Streaming</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Cuenta / N° de boleta *</label>
+        <select id="cb-cuenta" onchange="cargarInfoCuenta()">
+          <option value="">— Primero elegí el tipo —</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Período *</label>
+        <input id="cb-periodo" type="month">
+      </div>
+    </div>
+    <!-- Info de la cuenta seleccionada -->
+    <div id="cb-info-cuenta" style="display:none;margin-bottom:1rem;padding:10px 14px;background:var(--bg2);border-radius:var(--r);font-size:13px"></div>
+
+    <!-- Paso 2: datos de la boleta -->
+    <div class="stl">Paso 2 — Datos de la boleta</div>
+    <div class="fg3" style="margin-bottom:1rem">
+      <div class="fg">
+        <label>Monto total ($) *</label>
+        <input id="cb-total" type="number" placeholder="0" min="0" step="0.01" oninput="recalcCB()">
+      </div>
+      <div class="fg">
+        <label>Vencimiento real boleta</label>
+        <input id="cb-venc" type="date">
+      </div>
+      <div class="fg">
+        <label>Período facturación</label>
+        <input id="cb-periodo-fact" type="text" placeholder="Ej: 1 de 2, Mensual, Anual">
+      </div>
+    </div>
+    <div class="fg2" style="margin-bottom:1rem">
+      <div class="fg">
+        <label>Detalle / Nota</label>
+        <input id="cb-detalle" type="text" placeholder="Ej: Pago Camila, 14.32 USD...">
+      </div>
+      <div class="fg">
+        <label>Pagado por</label>
+        <input id="cb-pagador" type="text" placeholder="Ej: Mamá, Camila, Maxi...">
+      </div>
+    </div>
+
+    <!-- Paso 3: distribución -->
+    <div id="cb-blk-distribucion" style="display:none">
+      <div class="stl">Paso 3 — Distribución entre inquilinos</div>
+
+      <!-- LUZ: por kWh -->
+      <div id="cb-blk-luz" style="display:none">
+        <p style="font-size:12px;color:var(--tx2);margin-bottom:8px">Ingresá los kWh leídos en cada medidor. El monto se calcula automáticamente.</p>
+        <div id="cb-dist-luz"></div>
+        <div class="stl" style="margin-top:1rem">Bomba de agua (compartida)</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+          <div class="fg" style="width:160px;margin:0"><label>kWh bomba</label><input id="cb-bomba-kw" type="number" placeholder="0" min="0" oninput="recalcCB()"></div>
+          <div class="fg" style="width:160px;margin:0"><label>Monto bomba ($)</label><input id="cb-bomba-monto" type="text" readonly placeholder="automático"></div>
+        </div>
+        <div id="cb-bomba-depts" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+        <div style="margin-top:8px;padding:8px;background:var(--bg2);border-radius:var(--r);font-size:13px">
+          Total distribuido: <strong id="cb-dist-total">$0</strong> &nbsp;|&nbsp; Restante: <strong id="cb-restante">$0</strong>
+        </div>
+      </div>
+
+      <!-- GAS/AGUA/OTROS: por % -->
+      <div id="cb-blk-pct" style="display:none">
+        <div style="display:flex;gap:10px;margin-bottom:8px">
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+            <input type="radio" name="cb-metodo" value="pct" checked onchange="recalcCB()"> Porcentaje (%)
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+            <input type="radio" name="cb-metodo" value="frac" onchange="recalcCB()"> Fracción (1/5, 1/4...)
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+            <input type="radio" name="cb-metodo" value="igual" onchange="recalcCB()"> Partes iguales
+          </label>
+        </div>
+        <div id="cb-dist-pct"></div>
+        <div style="margin-top:8px;padding:8px;background:var(--bg2);border-radius:var(--r);font-size:13px">
+          Suma: <strong id="cb-suma-pct">0%</strong> &nbsp;|&nbsp; Total distribuido: <strong id="cb-dist-total2">$0</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="mac" style="margin-top:1.2rem">
+      <button class="btn pri" onclick="guardarBoleta()"><i class="ti ti-device-floppy"></i> Guardar boleta</button>
+    </div>
+  </div>
 </div>
 
 <!-- HISTORIAL DE BOLETAS -->
@@ -606,18 +789,38 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
 <div class="mbox">
   <h2><i class="ti ti-file-text"></i> <span id="mo-cont-t">Nuevo Contrato</span></h2>
   <input type="hidden" id="c-id">
+  <div class="fg2" style="margin-bottom:.8rem">
+    <div class="fg">
+      <label>Departamento *</label>
+      <select id="c-dept"><option value="">Seleccionar...</option></select>
+    </div>
+    <div class="fg">
+      <label>Tipo de ocupación *</label>
+      <select id="c-rol" onchange="onRolCont()">
+        <option value="inquilino">🧑 Inquilino</option>
+        <option value="propietario">🏠 Propietario (vive en el depto)</option>
+      </select>
+    </div>
+  </div>
+  <div class="fg" style="margin-bottom:.8rem">
+    <label>Persona *</label>
+    <select id="c-inq"><option value="">Seleccionar...</option></select>
+  </div>
+  <div id="c-blk-inquilino">
   <div class="fg2">
-    <div class="fg"><label>Departamento *</label><select id="c-dept"><option value="">Seleccionar...</option></select></div>
-    <div class="fg"><label>Inquilino *</label><select id="c-inq"><option value="">Seleccionar...</option></select></div>
     <div class="fg"><label>Fecha inicio *</label><input id="c-ini" type="date"></div>
-    <div class="fg"><label>Fecha fin *</label><input id="c-fin" type="date"></div>
+    <div class="fg"><label>Fecha fin</label><input id="c-fin" type="date"></div>
     <div class="fg"><label>Alquiler mensual ($) *</label><input id="c-monto" type="number" placeholder="0" min="0"></div>
     <div class="fg"><label>Depósito ($)</label><input id="c-dep" type="number" placeholder="0" min="0"></div>
     <div class="fg"><label>% Aumento pactado</label><input id="c-aum" type="number" placeholder="60" step="0.1" min="0"></div>
     <div class="fg"><label>Periodicidad</label>
       <select id="c-per"><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12" selected>Anual</option></select>
     </div>
-    <div class="fg full"><label>Cláusulas adicionales</label><textarea id="c-claus" rows="3" placeholder="Términos especiales..."></textarea></div>
+  </div>
+  </div>
+  <div class="fg">
+    <label>Cláusulas / Notas</label>
+    <textarea id="c-claus" rows="2" placeholder="Términos especiales..."></textarea>
   </div>
   <div class="mac">
     <button class="btn" onclick="cm('mo-cont')">Cancelar</button>
@@ -869,7 +1072,7 @@ function showPage(id, el) {
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id)?.classList.add('active');
   if (el) el.classList.add('active');
-  const fn = { dashboard:renderDash, departamentos:renderDepts, inquilinos:renderInqs, contratos:renderConts, servicios:renderServs, historial:renderHistorial, cobros:renderCobros, pagos:()=>{ document.getElementById('pagos-periodo').value=mesActual(); renderPagos(); }, mantenimiento:renderMantPend };
+  const fn = { dashboard:renderDash, departamentos:renderDepts, inquilinos:renderInqs, contratos:renderConts, 'datos-servicios':renderDatosServicios, 'cargar-boleta':renderCargarBoleta, historial:renderHistorial, cobros:renderCobros, pagos:()=>{ document.getElementById('pagos-periodo').value=mesActual(); renderPagos(); }, mantenimiento:renderMantPend };
   fn[id]?.();
 }
 function om(id) { document.getElementById(id).classList.add('open'); }
@@ -1227,31 +1430,42 @@ async function abrirCont(cont=null){
   si.innerHTML='<option value="">Seleccionar...</option>';
   depts.forEach(d=>sd.innerHTML+=`<option value="${d.id}">${d.num} — Piso ${d.piso||'?'}</option>`);
   inqs.forEach(i=>si.innerHTML+=`<option value="${i.id}">${i.nombre} ${i.apellido}</option>`);
-  ['c-id','c-ini','c-fin','c-monto','c-dep','c-aum','c-claus'].forEach(f=>document.getElementById(f).value='');
-  document.getElementById('c-per').value='12';
+  ['c-id','c-ini','c-fin','c-monto','c-dep','c-aum','c-claus'].forEach(f=>{const el=document.getElementById(f);if(el)el.value='';});
+  const perEl=document.getElementById('c-per');if(perEl)perEl.value='12';
+  const rolEl=document.getElementById('c-rol');if(rolEl)rolEl.value='inquilino';
   if(cont){
     document.getElementById('c-id').value=cont.id;
     document.getElementById('c-dept').value=cont.dept_id;
     document.getElementById('c-inq').value=cont.inq_id;
-    document.getElementById('c-ini').value=cont.fecha_inicio;
-    document.getElementById('c-fin').value=cont.fecha_fin;
-    document.getElementById('c-monto').value=cont.monto;
-    document.getElementById('c-dep').value=cont.deposito||'';
-    document.getElementById('c-aum').value=cont.pct_aumento||'';
-    document.getElementById('c-per').value=cont.periodo_aumento||'12';
-    document.getElementById('c-claus').value=cont.clausulas||'';
+    if(rolEl)rolEl.value=cont.rol||'inquilino';
+    const iniEl=document.getElementById('c-ini');if(iniEl)iniEl.value=cont.fecha_inicio||'';
+    const finEl=document.getElementById('c-fin');if(finEl)finEl.value=cont.fecha_fin||'';
+    const montoEl=document.getElementById('c-monto');if(montoEl)montoEl.value=cont.monto||'';
+    const depEl=document.getElementById('c-dep');if(depEl)depEl.value=cont.deposito||'';
+    const aumEl=document.getElementById('c-aum');if(aumEl)aumEl.value=cont.pct_aumento||'';
+    if(perEl)perEl.value=cont.periodo_aumento||'12';
+    const clausEl=document.getElementById('c-claus');if(clausEl)clausEl.value=cont.clausulas||'';
   }
+  onRolCont();
   om('mo-cont');
+}
+function onRolCont(){
+  const esProp=document.getElementById('c-rol')?.value==='propietario';
+  const blk=document.getElementById('c-blk-inquilino');
+  if(blk) blk.style.display=esProp?'none':'';
 }
 async function guardarCont(){
   const id=document.getElementById('c-id').value||uid();
   const dept_id=document.getElementById('c-dept').value;
   const inq_id=document.getElementById('c-inq').value;
+  const rol=document.getElementById('c-rol').value||'inquilino';
+  const esProp=rol==='propietario';
   const fecha_inicio=document.getElementById('c-ini').value;
   const fecha_fin=document.getElementById('c-fin').value;
   const monto=parseFloat(document.getElementById('c-monto').value)||0;
-  if(!dept_id||!inq_id||!fecha_inicio||!fecha_fin||!monto){alert('Completá todos los campos (*)');return;}
-  const c={id,dept_id,inq_id,fecha_inicio,fecha_fin,monto,deposito:parseFloat(document.getElementById('c-dep').value)||0,pct_aumento:parseFloat(document.getElementById('c-aum').value)||0,periodo_aumento:parseInt(document.getElementById('c-per').value),clausulas:document.getElementById('c-claus').value,estado:'activo'};
+  if(!dept_id||!inq_id){alert('Elegí departamento y persona (*)');return;}
+  if(!esProp&&(!fecha_inicio||!monto)){alert('Completá fecha inicio y alquiler (*)');return;}
+  const c={id,dept_id,inq_id,rol,fecha_inicio:fecha_inicio||null,fecha_fin:fecha_fin||null,monto:esProp?0:monto,deposito:esProp?0:(parseFloat(document.getElementById('c-dep').value)||0),pct_aumento:esProp?0:(parseFloat(document.getElementById('c-aum').value)||0),periodo_aumento:esProp?0:parseInt(document.getElementById('c-per').value),clausulas:document.getElementById('c-claus').value,estado:'activo'};
   await saveCont(c);
   const depts=await getDepts();
   const dept=depts.find(d=>d.id===dept_id);
@@ -1276,7 +1490,7 @@ async function renderConts(){
     <td><strong>${dept?dept.num:'?'}</strong></td>
     <td>${inq?inq.nombre+' '+inq.apellido:'?'}</td>
     <td>${fmtD(c.fecha_inicio)}</td><td>${fmtD(c.fecha_fin)}</td>
-    <td>${fmt(c.monto)}</td><td>${c.deposito?fmt(c.deposito):'—'}</td>
+    <td>${c.rol==='propietario'?'<span class="bdg blue">Propietario</span>':fmt(c.monto)}</td><td>${c.deposito?fmt(c.deposito):'—'}</td>
     <td>${c.pct_aumento?c.pct_aumento+'% c/'+c.periodo_aumento+'m':'—'}</td>
     <td><span class="bdg ${b}">${t}</span></td>
     <td style="white-space:nowrap;display:flex;gap:3px">
@@ -2430,6 +2644,354 @@ window.addEventListener('load', () => {
   }, 1500);
 });
 
+
+// ════════════════════════════════════════════════════
+//  DATOS DE SERVICIOS (info fija de cada cuenta)
+// ════════════════════════════════════════════════════
+
+async function getDatosServs() {
+  if (!sb) return lsGet('datos_servicios');
+  const {data} = await sb.from('datos_servicios').select('*').order('tipo');
+  return data || lsGet('datos_servicios');
+}
+async function saveDatoServ(ds) {
+  if (!sb) { lsUpsert('datos_servicios', ds); return; }
+  await sb.from('datos_servicios').upsert(ds);
+}
+async function delDatoServ(id) {
+  if (!sb) { lsDel('datos_servicios', id); return; }
+  await sb.from('datos_servicios').delete().eq('id', id);
+}
+
+const DS_ICONS = {luz:'⚡',gas:'🔥',agua:'💧',bomba:'💡',abl:'🏛️',municipal:'🏙️',internet:'🌐',streaming:'📺'};
+
+async function abrirDatoServ(item=null) {
+  const depts = await getDepts();
+  const chk = document.getElementById('ds-depts-check');
+  chk.innerHTML = '';
+  depts.forEach(d => {
+    const checked = item?.dept_ids?.includes(d.id) ? 'checked' : '';
+    chk.innerHTML += `<label style="display:flex;align-items:center;gap:4px;font-size:13px;background:var(--bg3);padding:4px 8px;border-radius:20px;cursor:pointer">
+      <input type="checkbox" value="${d.id}" ${checked}> Depto ${d.num}
+    </label>`;
+  });
+  document.getElementById('ds-id').value = item?.id || '';
+  document.getElementById('ds-tipo').value = item?.tipo || 'luz';
+  document.getElementById('ds-cuenta').value = item?.cuenta || '';
+  document.getElementById('ds-titular').value = item?.titular || '';
+  document.getElementById('ds-empresa').value = item?.empresa || '';
+  document.getElementById('ds-direccion').value = item?.direccion || '';
+  document.getElementById('ds-distrib').value = item?.distrib || 'medidor';
+  document.getElementById('ds-dia-venc').value = item?.dia_venc || '';
+  document.getElementById('ds-notas').value = item?.notas || '';
+  document.getElementById('mo-dato-serv-title').innerHTML = item
+    ? '<i class="ti ti-edit"></i> Editar Servicio'
+    : '<i class="ti ti-database"></i> Nuevo Servicio';
+  om('mo-dato-serv');
+}
+
+async function guardarDatoServ() {
+  const cuenta = document.getElementById('ds-cuenta').value.trim();
+  const tipo = document.getElementById('ds-tipo').value;
+  if (!cuenta || !tipo) { alert('Ingresá tipo y número de cuenta (*)'); return; }
+  const dept_ids = [...document.querySelectorAll('#ds-depts-check input:checked')].map(c=>c.value);
+  const ds = {
+    id: document.getElementById('ds-id').value || uid(),
+    tipo,
+    cuenta,
+    titular: document.getElementById('ds-titular').value || '',
+    empresa: document.getElementById('ds-empresa').value || '',
+    direccion: document.getElementById('ds-direccion').value || '',
+    dept_ids,
+    distrib: document.getElementById('ds-distrib').value,
+    dia_venc: parseInt(document.getElementById('ds-dia-venc').value) || null,
+    notas: document.getElementById('ds-notas').value || '',
+  };
+  await saveDatoServ(ds);
+  cm('mo-dato-serv');
+  renderDatosServicios();
+}
+
+async function renderDatosServicios() {
+  const el = document.getElementById('tbl-datos-servs');
+  el.innerHTML = '<div class="ld"><span class="sp"></span>Cargando...</div>';
+  const [dsList, depts, servs] = await Promise.all([getDatosServs(), getDepts(), getServs()]);
+
+  // Update totals
+  let luz=0,gas=0,agua=0,internet=0,streaming=0;
+  servs.forEach(s=>{
+    if(s.tipo==='luz'||s.tipo==='bomba')luz+=s.total;
+    if(s.tipo==='gas')gas+=s.total;
+    if(s.tipo==='agua')agua+=s.total;
+    if(s.tipo==='internet')internet+=s.total;
+    if(s.tipo==='streaming')streaming+=s.total;
+  });
+  document.getElementById('tot-luz').textContent=fmt(luz);
+  document.getElementById('tot-gas').textContent=fmt(gas);
+  document.getElementById('tot-agua').textContent=fmt(agua);
+  document.getElementById('tot-internet').textContent=fmt(internet);
+  document.getElementById('tot-streaming').textContent=fmt(streaming);
+
+  if (!dsList.length) {
+    el.innerHTML = '<p style="color:var(--tx2);padding:.5rem 0">Sin servicios configurados. Usá <strong>+ Nuevo Servicio</strong> para agregar las cuentas de luz, gas, agua, etc.</p>';
+    return;
+  }
+
+  const distribLabel = {medidor:'Por medidor (kWh)','partes-iguales':'Partes iguales',porcentaje:'Por porcentaje',unico:'Pago único'};
+  let h = `<table><thead><tr><th>Tipo</th><th>Cuenta / N°</th><th>Empresa</th><th>Titular</th><th>Deptos</th><th>Distribución</th><th>Vto.</th><th>Acc.</th></tr></thead><tbody>`;
+  dsList.forEach(ds => {
+    const deptNums = (ds.dept_ids||[]).map(did => {
+      const d = depts.find(x=>x.id===did);
+      return d ? `<span class="bdg gray">Dpto ${d.num}</span>` : '';
+    }).join(' ');
+    h += `<tr>
+      <td>${DS_ICONS[ds.tipo]||''} <strong>${ds.tipo.charAt(0).toUpperCase()+ds.tipo.slice(1)}</strong></td>
+      <td style="font-family:monospace">${ds.cuenta}</td>
+      <td>${ds.empresa||'—'}</td>
+      <td style="font-size:12px">${ds.titular||'—'}</td>
+      <td style="font-size:12px">${deptNums||'—'}</td>
+      <td style="font-size:12px">${distribLabel[ds.distrib]||ds.distrib}</td>
+      <td style="font-size:12px">${ds.dia_venc?'Día '+ds.dia_venc:'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn xs" onclick="editDatoServ('${ds.id}')"><i class="ti ti-edit"></i></button>
+        <button class="btn xs dan" style="margin-left:3px" onclick="if(confirm('¿Eliminar?'))delDatoServ('${ds.id}').then(renderDatosServicios)"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`;
+    if (ds.notas) {
+      h += `<tr><td colspan="8" style="font-size:11px;color:var(--tx2);padding-top:0">📝 ${ds.notas}</td></tr>`;
+    }
+  });
+  el.innerHTML = h + '</tbody></table>';
+}
+
+async function editDatoServ(id) {
+  const all = await getDatosServs();
+  const item = all.find(x=>x.id===id);
+  if (item) abrirDatoServ(item);
+}
+
+// ════════════════════════════════════════════════════
+//  CARGAR BOLETA — nueva pantalla
+// ════════════════════════════════════════════════════
+
+let _cbServicio = null; // dato del servicio seleccionado
+let _cbDepts = [];      // deptos del servicio
+
+async function renderCargarBoleta() {
+  document.getElementById('cb-periodo').value = mesActual();
+  document.getElementById('cb-total').value = '';
+  document.getElementById('cb-venc').value = '';
+  document.getElementById('cb-periodo-fact').value = '';
+  document.getElementById('cb-detalle').value = '';
+  document.getElementById('cb-pagador').value = '';
+  document.getElementById('cb-tipo').value = '';
+  document.getElementById('cb-cuenta').innerHTML = '<option value="">— Primero elegí el tipo —</option>';
+  document.getElementById('cb-info-cuenta').style.display = 'none';
+  document.getElementById('cb-blk-distribucion').style.display = 'none';
+  _cbServicio = null;
+  _cbDepts = [];
+}
+
+async function cargarCuentasPorTipo() {
+  const tipo = document.getElementById('cb-tipo').value;
+  const sel = document.getElementById('cb-cuenta');
+  sel.innerHTML = '<option value="">Cargando...</option>';
+  document.getElementById('cb-info-cuenta').style.display = 'none';
+  document.getElementById('cb-blk-distribucion').style.display = 'none';
+  _cbServicio = null;
+  if (!tipo) { sel.innerHTML = '<option value="">— Primero elegí el tipo —</option>'; return; }
+  const all = await getDatosServs();
+  const filtrados = all.filter(ds => ds.tipo === tipo);
+  if (!filtrados.length) {
+    sel.innerHTML = `<option value="">Sin cuentas de ${tipo} configuradas — cargá en Datos Servicios</option>`;
+    return;
+  }
+  sel.innerHTML = '<option value="">Seleccionar cuenta...</option>';
+  filtrados.forEach(ds => {
+    sel.innerHTML += `<option value="${ds.id}">${ds.cuenta}${ds.titular?' — '+ds.titular:''}${ds.direccion?' ('+ds.direccion+')':''}</option>`;
+  });
+}
+
+async function cargarInfoCuenta() {
+  const id = document.getElementById('cb-cuenta').value;
+  const infoEl = document.getElementById('cb-info-cuenta');
+  document.getElementById('cb-blk-distribucion').style.display = 'none';
+  if (!id) { infoEl.style.display = 'none'; return; }
+  const all = await getDatosServs();
+  const ds = all.find(x=>x.id===id);
+  if (!ds) return;
+  _cbServicio = ds;
+  const depts = await getDepts();
+  _cbDepts = (ds.dept_ids||[]).map(did=>depts.find(d=>d.id===did)).filter(Boolean);
+  const distribLabel = {medidor:'Por medidor individual (kWh)','partes-iguales':'Partes iguales',porcentaje:'Por porcentaje',unico:'Pago único (no se divide)'};
+  const deptNums = _cbDepts.map(d=>`Depto ${d.num}`).join(' · ') || '—';
+  infoEl.innerHTML = `
+    <strong>${DS_ICONS[ds.tipo]||''} ${ds.empresa||ds.tipo} — Cta. ${ds.cuenta}</strong>&nbsp;&nbsp;
+    ${ds.titular?`<span style="color:var(--tx2)">Titular: ${ds.titular}</span>&nbsp;`:''} 
+    ${ds.direccion?`<span style="color:var(--tx2)">${ds.direccion}</span>&nbsp;`:''}
+    <br><span style="color:var(--tx2)">👥 Deptos: ${deptNums} &nbsp;|&nbsp; ${distribLabel[ds.distrib]||ds.distrib}${ds.dia_venc?' &nbsp;|&nbsp; Vto. día '+ds.dia_venc:''}</span>
+    ${ds.notas?`<br><span style="color:var(--tx3);font-size:11px">📝 ${ds.notas}</span>`:''}
+  `;
+  infoEl.style.display = 'block';
+  // Si hay un monto cargado, construir distribución
+  buildCBDistribucion();
+}
+
+function buildCBDistribucion() {
+  if (!_cbServicio || !_cbDepts.length) return;
+  const blk = document.getElementById('cb-blk-distribucion');
+  const blkLuz = document.getElementById('cb-blk-luz');
+  const blkPct = document.getElementById('cb-blk-pct');
+  const tipo = _cbServicio.tipo;
+  const distrib = _cbServicio.distrib;
+  blk.style.display = '';
+  if (tipo === 'luz' || distrib === 'medidor') {
+    blkLuz.style.display = '';
+    blkPct.style.display = 'none';
+    // Build kWh inputs
+    let h = '';
+    _cbDepts.forEach(d => {
+      h += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="min-width:80px;font-size:13px"><strong>Depto ${d.num}</strong></span>
+        <div class="fg" style="margin:0;width:130px"><label style="font-size:11px">kWh</label><input id="cb-kw-${d.id}" type="number" placeholder="0" min="0" oninput="recalcCB()" style="font-size:13px"></div>
+        <div class="fg" style="margin:0;width:140px"><label style="font-size:11px">Monto ($)</label><input id="cb-monto-${d.id}" type="text" readonly placeholder="—" style="font-size:13px;color:var(--acc)"></div>
+      </div>`;
+    });
+    document.getElementById('cb-dist-luz').innerHTML = h;
+    // Bomba depts checkboxes
+    let hb = '';
+    _cbDepts.forEach(d => {
+      hb += `<label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--bg2);padding:4px 8px;border-radius:20px;cursor:pointer">
+        <input type="checkbox" id="cb-bomba-${d.id}" onchange="recalcCB()"> Depto ${d.num}
+      </label>`;
+    });
+    document.getElementById('cb-bomba-depts').innerHTML = hb;
+  } else {
+    blkLuz.style.display = 'none';
+    blkPct.style.display = '';
+    // Build pct inputs
+    const esIgual = distrib === 'partes-iguales';
+    let h = '';
+    _cbDepts.forEach((d, i) => {
+      const defVal = esIgual ? (100/_cbDepts.length).toFixed(2) : '';
+      h += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="min-width:80px;font-size:13px"><strong>Depto ${d.num}</strong></span>
+        <div class="fg" style="margin:0;width:100px"><label style="font-size:11px">%</label><input id="cb-pct-${d.id}" type="number" placeholder="0" value="${defVal}" min="0" step="0.01" oninput="recalcCB()" style="font-size:13px" ${esIgual?'readonly':''}></div>
+        <div class="fg" style="margin:0;width:140px"><label style="font-size:11px">Monto ($)</label><input id="cb-monto-${d.id}" type="text" readonly placeholder="—" style="font-size:13px;color:var(--acc)"></div>
+      </div>`;
+    });
+    document.getElementById('cb-dist-pct').innerHTML = h;
+    if (esIgual) recalcCB();
+  }
+}
+
+function recalcCB() {
+  if (!_cbServicio || !_cbDepts.length) return;
+  const total = parseFloat(document.getElementById('cb-total').value) || 0;
+  const tipo = _cbServicio.tipo;
+  const distrib = _cbServicio.distrib;
+  if (tipo === 'luz' || distrib === 'medidor') {
+    let totalKw = 0;
+    _cbDepts.forEach(d => { totalKw += parseFloat(document.getElementById('cb-kw-'+d.id)?.value||0); });
+    const bombaKw = parseFloat(document.getElementById('cb-bomba-kw')?.value||0);
+    const pxkw = (totalKw + bombaKw) > 0 ? total / (totalKw + bombaKw) : 0;
+    const bombaM = bombaKw * pxkw;
+    const sel = _cbDepts.filter(d => document.getElementById('cb-bomba-'+d.id)?.checked);
+    const bombaPerDept = sel.length > 0 ? bombaM / sel.length : 0;
+    let distTotal = 0;
+    _cbDepts.forEach(d => {
+      const kw = parseFloat(document.getElementById('cb-kw-'+d.id)?.value||0);
+      const bCheck = document.getElementById('cb-bomba-'+d.id)?.checked;
+      const m = Math.round(kw*pxkw + (bCheck?bombaPerDept:0));
+      const el = document.getElementById('cb-monto-'+d.id);
+      if (el) el.value = m > 0 ? fmt(m) : '';
+      distTotal += m;
+    });
+    const bombaMontoEl = document.getElementById('cb-bomba-monto');
+    if (bombaMontoEl) bombaMontoEl.value = bombaM > 0 ? fmt(Math.round(bombaM)) : '';
+    document.getElementById('cb-dist-total').textContent = fmt(distTotal);
+    document.getElementById('cb-restante').textContent = fmt(total - distTotal);
+  } else {
+    const metodo = document.querySelector('input[name="cb-metodo"]:checked')?.value || 'pct';
+    let suma = 0;
+    _cbDepts.forEach(d => { suma += parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0); });
+    const factor = metodo === 'frac' ? suma : suma / 100;
+    let distTotal = 0;
+    _cbDepts.forEach(d => {
+      const v = parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0);
+      const m = total > 0 && factor > 0 ? Math.round((metodo==='frac'?v:v/100)*total/factor) : 0;
+      const el = document.getElementById('cb-monto-'+d.id);
+      if (el) el.value = m > 0 ? fmt(m) : '';
+      distTotal += m;
+    });
+    document.getElementById('cb-suma-pct').textContent = metodo==='igual' ? _cbDepts.length+' partes' : (metodo==='frac'?suma.toFixed(3):suma.toFixed(1)+'%');
+    document.getElementById('cb-dist-total2').textContent = fmt(distTotal);
+  }
+}
+
+async function guardarBoleta() {
+  const tipo = document.getElementById('cb-tipo').value;
+  const cuentaId = document.getElementById('cb-cuenta').value;
+  const periodo = document.getElementById('cb-periodo').value;
+  const total = parseFloat(document.getElementById('cb-total').value)||0;
+  if (!tipo || !cuentaId || !periodo || !total) { alert('Completá tipo, cuenta, período y monto'); return; }
+  const distrib = _cbServicio?.distrib||'partes-iguales';
+  const distribucion = {};
+  let numero_boleta = _cbServicio?.cuenta||null;
+  if (tipo === 'luz' || distrib === 'medidor') {
+    const bombaKw = parseFloat(document.getElementById('cb-bomba-kw')?.value||0);
+    let totalKw = bombaKw;
+    _cbDepts.forEach(d => { totalKw += parseFloat(document.getElementById('cb-kw-'+d.id)?.value||0); });
+    const pxkw = totalKw>0?total/totalKw:0;
+    const bombaM = bombaKw*pxkw;
+    const sel = _cbDepts.filter(d=>document.getElementById('cb-bomba-'+d.id)?.checked);
+    const bombaPerDept = sel.length>0?bombaM/sel.length:0;
+    _cbDepts.forEach(d => {
+      const kw = parseFloat(document.getElementById('cb-kw-'+d.id)?.value||0);
+      const bCheck = document.getElementById('cb-bomba-'+d.id)?.checked;
+      const monto = Math.round(kw*pxkw+(bCheck?bombaPerDept:0));
+      const extras = bCheck&&bombaPerDept>0?[{concepto:'Bomba de agua',monto:Math.round(bombaPerDept)}]:[];
+      distribucion[d.id] = {monto, kw, extras};
+    });
+  } else {
+    const metodo = document.querySelector('input[name="cb-metodo"]:checked')?.value||'pct';
+    let suma = 0;
+    _cbDepts.forEach(d=>{suma+=parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0);});
+    const factor = metodo==='frac'?suma:suma/100;
+    _cbDepts.forEach(d=>{
+      const v = parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0);
+      const monto = total>0&&factor>0?Math.round((metodo==='frac'?v:v/100)*total/factor):0;
+      distribucion[d.id] = {monto, pct:metodo==='frac'?v*100:v};
+    });
+  }
+  const serv = {
+    id: uid(), tipo, periodo, total,
+    metodo: (tipo==='luz'||distrib==='medidor')?'kw':'porcentaje',
+    distribucion, numero_boleta,
+    fecha_vencimiento: document.getElementById('cb-venc').value||null,
+    fecha: new Date().toISOString().slice(0,10)
+  };
+  await saveServ(serv);
+  // También guardar en historial automáticamente
+  const histEntry = {
+    id: uid(),
+    servicio: tipo,
+    vto_cobro: null,
+    vto_real: document.getElementById('cb-venc').value||null,
+    monto: total,
+    periodo_fact: document.getElementById('cb-periodo-fact').value||null,
+    estado: 'pagada',
+    detalle: document.getElementById('cb-detalle').value||null,
+    pagador: document.getElementById('cb-pagador').value||null,
+    fecha_carga: new Date().toISOString().slice(0,10)
+  };
+  await saveHistorial(histEntry);
+  alert('✅ Boleta guardada y registrada en Historial');
+  renderCargarBoleta();
+}
+
+// renderServs alias para compatibilidad (dashboard y otros lo llaman)
+async function renderServs() { return renderDatosServicios(); }
 </script>
 </body>
 </html>
