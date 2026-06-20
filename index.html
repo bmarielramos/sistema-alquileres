@@ -207,6 +207,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
   <div class="ns">
     <div class="nl">Finanzas</div>
     <div class="ni" onclick="showPage('servicios',this)"><i class="ti ti-bolt"></i> <span class="nav-txt">Servicios</span></div>
+    <div class="ni" onclick="showPage('historial',this)"><i class="ti ti-history"></i> <span class="nav-txt">Hist. Boletas</span></div>
     <div class="ni" onclick="showPage('cobros',this)"><i class="ti ti-receipt"></i> <span class="nav-txt">Cobros</span></div>
     <div class="ni" onclick="showPage('pagos',this)"><i class="ti ti-circle-check"></i> <span class="nav-txt">Pagos</span></div>
     <div class="ni" onclick="showPage('mantenimiento',this)"><i class="ti ti-tools"></i> <span class="nav-txt">Manten.</span></div>
@@ -287,8 +288,142 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
     <div class="mt"><div class="mt-l">⚡ Luz total</div><div class="mt-v" id="tot-luz">$0</div></div>
     <div class="mt"><div class="mt-l">🔥 Gas total</div><div class="mt-v" id="tot-gas">$0</div></div>
     <div class="mt"><div class="mt-l">💧 Agua total</div><div class="mt-v" id="tot-agua">$0</div></div>
+    <div class="mt"><div class="mt-l">🌐 Internet total</div><div class="mt-v" id="tot-internet">$0</div></div>
+    <div class="mt"><div class="mt-l">📺 Streaming total</div><div class="mt-v" id="tot-streaming">$0</div></div>
   </div>
   <div class="card"><div id="tbl-servs"><div class="ld"><span class="sp"></span>Cargando...</div></div></div>
+</div>
+
+<!-- HISTORIAL DE BOLETAS -->
+<div id="page-historial" class="page">
+  <div class="ph">
+    <div><h1>Historial de Boletas</h1><p>Registro histórico de todas las facturas por servicio</p></div>
+    <div style="display:flex;gap:7px">
+      <button class="btn" onclick="exportarHistorialCSV()"><i class="ti ti-download"></i> Exportar CSV</button>
+      <button class="btn pri" onclick="abrirHistorial()"><i class="ti ti-plus"></i> Agregar Boleta</button>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card" style="margin-bottom:.7rem">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+      <div class="fg" style="margin:0;min-width:140px">
+        <label>Servicio</label>
+        <select id="hfil-serv" onchange="renderHistorial()">
+          <option value="">Todos</option>
+          <option value="edenor1">⚡ Edenor 1 (Cta.4855)</option>
+          <option value="edenor2">⚡ Edenor 2 (Cta.6959)</option>
+          <option value="edenor3">⚡ Edenor 3 (Cta.7966)</option>
+          <option value="aysa1">💧 AySA 1 (Cta.948)</option>
+          <option value="aysa2">💧 AySA 2 (Cta.951)</option>
+          <option value="gas1">🔥 Gas 1 - Naturgy (Cta.355/7)</option>
+          <option value="gas2">🔥 Gas 2 - Naturgy (Cta.354/5)</option>
+          <option value="claro">🌐 Claro Internet</option>
+          <option value="netflix">📺 Netflix</option>
+          <option value="muni1">🏛️ Muni ABL (Cta.430459/5)</option>
+          <option value="muni2">🏛️ Muni Terreno (Cta.430458)</option>
+          <option value="arba">📄 ARBA</option>
+        </select>
+      </div>
+      <div class="fg" style="margin:0;min-width:120px">
+        <label>Año</label>
+        <select id="hfil-anio" onchange="renderHistorial()">
+          <option value="">Todos</option>
+          <option value="2025">2025</option>
+          <option value="2026">2026</option>
+        </select>
+      </div>
+      <div class="fg" style="margin:0;min-width:120px">
+        <label>Estado pago</label>
+        <select id="hfil-estado" onchange="renderHistorial()">
+          <option value="">Todos</option>
+          <option value="pagada">✅ Pagada</option>
+          <option value="pendiente">⏳ Pendiente</option>
+          <option value="vencida">❌ Vencida</option>
+        </select>
+      </div>
+      <button class="btn sm" onclick="document.getElementById('hfil-serv').value='';document.getElementById('hfil-anio').value='';document.getElementById('hfil-estado').value='';renderHistorial()">
+        <i class="ti ti-x"></i> Limpiar
+      </button>
+    </div>
+  </div>
+
+  <!-- Métricas rápidas -->
+  <div class="mg" style="margin-bottom:.9rem">
+    <div class="mt"><div class="mt-l">📋 Total registros</div><div class="mt-v" id="hstat-total">0</div></div>
+    <div class="mt"><div class="mt-l">✅ Pagadas</div><div class="mt-v" id="hstat-pag" style="color:#4A7C1F">0</div></div>
+    <div class="mt"><div class="mt-l">⏳ Pendientes</div><div class="mt-v" id="hstat-pend" style="color:#A05A00">0</div></div>
+    <div class="mt"><div class="mt-l">💰 Monto total</div><div class="mt-v" id="hstat-monto">$0</div></div>
+  </div>
+
+  <div class="card"><div id="tbl-historial"><div class="ld"><span class="sp"></span>Cargando...</div></div></div>
+</div>
+
+<!-- MODAL HISTORIAL -->
+<div class="mo" id="mo-historial">
+<div class="mbox" style="width:640px">
+  <h2 id="mo-hist-title"><i class="ti ti-history"></i> Agregar Boleta al Historial</h2>
+  <input type="hidden" id="h-id">
+  <div class="fg3">
+    <div class="fg">
+      <label>Servicio *</label>
+      <select id="h-serv">
+        <option value="edenor1">⚡ Edenor 1 (Cta.4855)</option>
+        <option value="edenor2">⚡ Edenor 2 (Cta.6959)</option>
+        <option value="edenor3">⚡ Edenor 3 (Cta.7966)</option>
+        <option value="aysa1">💧 AySA 1 (Cta.948)</option>
+        <option value="aysa2">💧 AySA 2 (Cta.951)</option>
+        <option value="gas1">🔥 Gas 1 - Naturgy (355/7)</option>
+        <option value="gas2">🔥 Gas 2 - Naturgy (354/5)</option>
+        <option value="claro">🌐 Claro Internet</option>
+        <option value="netflix">📺 Netflix</option>
+        <option value="muni1">🏛️ Muni ABL (430459/5)</option>
+        <option value="muni2">🏛️ Muni Terreno (430458)</option>
+        <option value="arba">📄 ARBA</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Vto. cobro (día 10) *</label>
+      <input id="h-vto-cobro" type="date">
+    </div>
+    <div class="fg">
+      <label>Vto. real boleta</label>
+      <input id="h-vto-real" type="date">
+    </div>
+  </div>
+  <div class="fg3">
+    <div class="fg">
+      <label>Monto boleta ($) *</label>
+      <input id="h-monto" type="number" placeholder="0" min="0" step="0.01">
+    </div>
+    <div class="fg">
+      <label>Período facturación</label>
+      <input id="h-periodo" type="text" placeholder="Ej: 1 de 2, Mensual, Anual">
+    </div>
+    <div class="fg">
+      <label>Estado</label>
+      <select id="h-estado">
+        <option value="pagada">✅ Pagada</option>
+        <option value="pendiente">⏳ Pendiente</option>
+        <option value="vencida">❌ Vencida</option>
+      </select>
+    </div>
+  </div>
+  <div class="fg2">
+    <div class="fg">
+      <label>Detalle / Notas</label>
+      <input id="h-detalle" type="text" placeholder="Ej: Pago Camila, 14.32 USD, bimestral...">
+    </div>
+    <div class="fg">
+      <label>Pagado por</label>
+      <input id="h-pagador" type="text" placeholder="Ej: Camila, Mamá, Maxi...">
+    </div>
+  </div>
+  <div class="mac">
+    <button class="btn" onclick="cm('mo-historial')">Cancelar</button>
+    <button class="btn pri" onclick="guardarHistorial()"><i class="ti ti-device-floppy"></i> Guardar</button>
+  </div>
+</div>
 </div>
 
 <!-- COBROS -->
@@ -502,8 +637,11 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
         <option value="luz">⚡ Luz</option>
         <option value="gas">🔥 Gas</option>
         <option value="agua">💧 Agua</option>
+        <option value="bomba">💡 Bomba de agua</option>
         <option value="abl">🏛️ ABL</option>
         <option value="municipal">🏙️ Imp. Municipal</option>
+        <option value="internet">🌐 Internet</option>
+        <option value="streaming">📺 Streaming</option>
       </select>
     </div>
     <div class="fg"><label>Período *</label><input id="s-periodo" type="month"></div>
@@ -731,7 +869,7 @@ function showPage(id, el) {
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id)?.classList.add('active');
   if (el) el.classList.add('active');
-  const fn = { dashboard:renderDash, departamentos:renderDepts, inquilinos:renderInqs, contratos:renderConts, servicios:renderServs, cobros:renderCobros, pagos:()=>{ document.getElementById('pagos-periodo').value=mesActual(); renderPagos(); }, mantenimiento:renderMantPend };
+  const fn = { dashboard:renderDash, departamentos:renderDepts, inquilinos:renderInqs, contratos:renderConts, servicios:renderServs, historial:renderHistorial, cobros:renderCobros, pagos:()=>{ document.getElementById('pagos-periodo').value=mesActual(); renderPagos(); }, mantenimiento:renderMantPend };
   fn[id]?.();
 }
 function om(id) { document.getElementById(id).classList.add('open'); }
@@ -1203,7 +1341,7 @@ function buscarDeptPorNc(){
   const tipo = document.getElementById('s-tipo').value;
   const res = document.getElementById('nc-resultado');
   if(!nc){ res.innerHTML=''; return; }
-  const campoMap = {luz:'nc_luz', gas:'nc_gas', agua:'nc_agua', abl:'nc_abl', municipal:'nc_municipal'};
+  const campoMap = {luz:'nc_luz', gas:'nc_gas', agua:'nc_agua', bomba:'nc_luz', abl:'nc_abl', municipal:'nc_municipal', internet:'nc_internet', streaming:'nc_internet'};
   const campo = campoMap[tipo];
   const encontrados = _todosLosDepts.filter(d => d[campo] && d[campo].toString().trim() === nc);
   const tipoLabel={luz:'luz',gas:'gas',agua:'agua',abl:'ABL',municipal:'Imp. Municipal'}[tipo];
@@ -1223,10 +1361,10 @@ function buscarDeptPorNc(){
 function onTipoServ(){
   const tipo=document.getElementById('s-tipo').value;
   const esLuz=tipo==='luz';
-  const esGasAgua=['gas','agua','abl','municipal'].includes(tipo);
+  const esGasAgua=['gas','agua','bomba','abl','municipal','internet','streaming'].includes(tipo);
   document.getElementById('blk-luz').style.display=esLuz?'':'none';
   document.getElementById('blk-gasagua').style.display=esGasAgua?'':'none';
-  const labels={gas:'Gas',agua:'Agua',abl:'ABL',municipal:'Imp. Municipal'};
+  const labels={gas:'Gas',agua:'Agua',bomba:'Bomba de agua',abl:'ABL',municipal:'Imp. Municipal',internet:'Internet',streaming:'Streaming'};
   document.getElementById('blk-tipo-label').textContent=labels[tipo]||tipo;
   // re-buscar con el nuevo tipo por si ya había un N° cargado
   const nc = document.getElementById('s-nbolt').value.trim();
@@ -1364,14 +1502,17 @@ async function renderServs(){
   el.innerHTML='<div class="ld"><span class="sp"></span>Cargando...</div>';
   const servs=await getServs();
   let luz=0,gas=0,agua=0;
-  servs.forEach(s=>{if(s.tipo==='luz')luz+=s.total;if(s.tipo==='gas')gas+=s.total;if(s.tipo==='agua')agua+=s.total;});
+  let internet=0,streaming=0;
+  servs.forEach(s=>{if(s.tipo==='luz'||s.tipo==='bomba')luz+=s.total;if(s.tipo==='gas')gas+=s.total;if(s.tipo==='agua')agua+=s.total;if(s.tipo==='internet')internet+=s.total;if(s.tipo==='streaming')streaming+=s.total;});
   document.getElementById('tot-luz').textContent=fmt(luz);
   document.getElementById('tot-gas').textContent=fmt(gas);
   document.getElementById('tot-agua').textContent=fmt(agua);
+  document.getElementById('tot-internet').textContent=fmt(internet);
+  document.getElementById('tot-streaming').textContent=fmt(streaming);
   if(!servs.length){el.innerHTML='<p style="color:var(--tx2);padding:.5rem 0">Sin servicios cargados.</p>';return;}
   let h=`<table><thead><tr><th>Tipo</th><th>Período</th><th>N° Boleta</th><th>Total</th><th>Vencimiento</th><th>Distribución</th><th>Acc.</th></tr></thead><tbody>`;
   servs.forEach(s=>{
-    const ic={luz:'⚡',gas:'🔥',agua:'💧'};
+    const ic={luz:'⚡',gas:'🔥',agua:'💧',bomba:'💡',abl:'🏛️',municipal:'🏙️',internet:'🌐',streaming:'📺'};
     const nd=Object.keys(s.distribucion||{}).length;
     const dias=s.fecha_vencimiento?dvenc(s.fecha_vencimiento):null;
     let vencBadge='';
@@ -1410,7 +1551,7 @@ async function verDetServ(id){
     const extras=(v.extras||[]).map(e=>`<span class="bdg blue" style="margin-right:3px">${e.concepto}: ${fmt(e.monto)}</span>`).join('');
     rows+=`<td>${extras||'—'}</td></tr>`;
   });
-  const ic={luz:'⚡',gas:'🔥',agua:'💧'};
+  const ic={luz:'⚡',gas:'🔥',agua:'💧',bomba:'💡',abl:'🏛️',municipal:'🏙️',internet:'🌐',streaming:'📺'};
   alert = undefined; // use modal instead
   const html=`<div style="font-size:13px">
     <p><strong>${ic[s.tipo]} ${s.tipo.toUpperCase()}</strong> — Período: ${s.periodo} — ${fmt(s.total)}</p>
@@ -1838,6 +1979,457 @@ document.addEventListener('keydown', e => {
 initSB();
 document.getElementById('pagos-periodo').value=mesActual();
 renderDash();
+
+// ════════════════════════════════════════════════════
+//  HISTORIAL DE BOLETAS
+// ════════════════════════════════════════════════════
+
+const HIST_LABELS = {
+  edenor1:'⚡ Edenor 1 (Cta.4855)',
+  edenor2:'⚡ Edenor 2 (Cta.6959)',
+  edenor3:'⚡ Edenor 3 (Cta.7966)',
+  aysa1:'💧 AySA 1 (Cta.948)',
+  aysa2:'💧 AySA 2 (Cta.951)',
+  gas1:'🔥 Gas 1 - Naturgy (355/7)',
+  gas2:'🔥 Gas 2 - Naturgy (354/5)',
+  claro:'🌐 Claro Internet',
+  netflix:'📺 Netflix',
+  muni1:'🏛️ Muni ABL (430459/5)',
+  muni2:'🏛️ Muni Terreno (430458)',
+  arba:'📄 ARBA'
+};
+
+const HIST_INQUILINOS = {
+  edenor1:'Mamá (Enza)',
+  edenor2:'MAXI',
+  edenor3:'Rocio · Flor · Maria · Mica',
+  aysa1:'Rocio · Flor · Maria · Mica · Sofía (÷5)',
+  aysa2:'MAXI · Mamá · Camila · Brenda (÷4)',
+  gas1:'Mamá + Florencia (÷2)',
+  gas2:'MAXI 75% + Camila 25%',
+  claro:'Camila · Sofía · Brenda · Mamá',
+  netflix:'Camila · Sofía · Brenda · Mamá (÷4)',
+  muni1:'Todos los inquilinos (÷5)',
+  muni2:'Tío 50% + Mamá/Camila/Sofía 50%',
+  arba:'Pago anual — no mensual'
+};
+
+async function getHistorial() {
+  if (!sb) return lsGet('historial');
+  const {data} = await sb.from('historial_boletas').select('*').order('vto_cobro',{ascending:false});
+  return data || lsGet('historial');
+}
+
+async function saveHistorial(h) {
+  if (!sb) { lsUpsert('historial', h); return; }
+  await sb.from('historial_boletas').upsert(h);
+}
+
+async function delHistorial(id) {
+  if (!sb) { lsDel('historial', id); return; }
+  await sb.from('historial_boletas').delete().eq('id', id);
+}
+
+function abrirHistorial(item=null) {
+  document.getElementById('h-id').value = item?.id || '';
+  document.getElementById('h-serv').value = item?.servicio || 'edenor3';
+  document.getElementById('h-vto-cobro').value = item?.vto_cobro || '';
+  document.getElementById('h-vto-real').value = item?.vto_real || '';
+  document.getElementById('h-monto').value = item?.monto || '';
+  document.getElementById('h-periodo').value = item?.periodo_fact || '';
+  document.getElementById('h-estado').value = item?.estado || 'pagada';
+  document.getElementById('h-detalle').value = item?.detalle || '';
+  document.getElementById('h-pagador').value = item?.pagador || '';
+  document.getElementById('mo-hist-title').innerHTML = item
+    ? '<i class="ti ti-edit"></i> Editar Boleta'
+    : '<i class="ti ti-history"></i> Agregar Boleta al Historial';
+  om('mo-historial');
+}
+
+async function guardarHistorial() {
+  const id = document.getElementById('h-id').value || uid();
+  const monto = parseFloat(document.getElementById('h-monto').value);
+  if (!monto || !document.getElementById('h-vto-cobro').value) {
+    alert('Ingresá monto y fecha de vencimiento de cobro'); return;
+  }
+  const h = {
+    id,
+    servicio: document.getElementById('h-serv').value,
+    vto_cobro: document.getElementById('h-vto-cobro').value,
+    vto_real: document.getElementById('h-vto-real').value || null,
+    monto,
+    periodo_fact: document.getElementById('h-periodo').value || null,
+    estado: document.getElementById('h-estado').value,
+    detalle: document.getElementById('h-detalle').value || null,
+    pagador: document.getElementById('h-pagador').value || null,
+    fecha_carga: new Date().toISOString().slice(0,10)
+  };
+  await saveHistorial(h);
+  cm('mo-historial');
+  renderHistorial();
+}
+
+async function editarHistorial(id) {
+  const all = await getHistorial();
+  const item = all.find(x => x.id === id);
+  if (item) abrirHistorial(item);
+}
+
+async function renderHistorial() {
+  const el = document.getElementById('tbl-historial');
+  el.innerHTML = '<div class="ld"><span class="sp"></span>Cargando...</div>';
+
+  let all = await getHistorial();
+
+  // Aplicar filtros
+  const fServ = document.getElementById('hfil-serv')?.value || '';
+  const fAnio = document.getElementById('hfil-anio')?.value || '';
+  const fEst = document.getElementById('hfil-estado')?.value || '';
+
+  if (fServ) all = all.filter(x => x.servicio === fServ);
+  if (fAnio) all = all.filter(x => (x.vto_cobro||'').startsWith(fAnio));
+  if (fEst) all = all.filter(x => x.estado === fEst);
+
+  // Métricas
+  const total = all.length;
+  const pagadas = all.filter(x=>x.estado==='pagada').length;
+  const pend = all.filter(x=>x.estado==='pendiente').length;
+  const monto = all.reduce((a,x)=>a+(x.monto||0),0);
+  document.getElementById('hstat-total').textContent = total;
+  document.getElementById('hstat-pag').textContent = pagadas;
+  document.getElementById('hstat-pend').textContent = pend;
+  document.getElementById('hstat-monto').textContent = fmt(monto);
+
+  if (!all.length) {
+    el.innerHTML = '<p style="color:var(--tx2);padding:.5rem 0">Sin registros. Usá el botón <strong>+ Agregar Boleta</strong> para cargar el historial.</p>';
+    return;
+  }
+
+  // Agrupar por servicio para mostrar
+  const porServ = {};
+  all.forEach(h => {
+    const k = h.servicio || 'otro';
+    if (!porServ[k]) porServ[k] = [];
+    porServ[k].push(h);
+  });
+
+  let html = '';
+  const estadoBadge = {
+    pagada: '<span class="bdg green">✅ Pagada</span>',
+    pendiente: '<span class="bdg amber">⏳ Pendiente</span>',
+    vencida: '<span class="bdg red">❌ Vencida</span>'
+  };
+
+  // Si hay filtro de servicio, mostrar tabla plana; si no, agrupar
+  if (fServ) {
+    html += `<p style="font-size:12px;color:var(--tx2);margin-bottom:.5rem">👥 Pagan: <strong>${HIST_INQUILINOS[fServ]||'—'}</strong></p>`;
+    html += buildHistTable(all, estadoBadge);
+  } else {
+    Object.keys(HIST_LABELS).forEach(srv => {
+      const rows = porServ[srv];
+      if (!rows || !rows.length) return;
+      const totalSrv = rows.reduce((a,x)=>a+(x.monto||0),0);
+      html += `<div class="stl" style="margin-top:1rem">${HIST_LABELS[srv]} <span style="color:var(--tx3);font-weight:400;font-size:11px">— ${rows.length} registros · ${fmt(totalSrv)}</span></div>`;
+      html += `<p style="font-size:12px;color:var(--tx2);margin-bottom:.4rem">👥 ${HIST_INQUILINOS[srv]||''}</p>`;
+      html += buildHistTable(rows, estadoBadge);
+    });
+    // Otros servicios no categorizados
+    const otros = all.filter(x=>!HIST_LABELS[x.servicio]);
+    if (otros.length) {
+      html += `<div class="stl" style="margin-top:1rem">Otros</div>`;
+      html += buildHistTable(otros, estadoBadge);
+    }
+  }
+
+  el.innerHTML = html;
+}
+
+function buildHistTable(rows, estadoBadge) {
+  let t = `<div style="overflow-x:auto"><table style="min-width:600px">
+    <thead><tr>
+      <th>Vto. Cobro</th>
+      <th>Monto</th>
+      <th>Período</th>
+      <th>Vto. Real</th>
+      <th>Estado</th>
+      <th>Detalle / Pagador</th>
+      <th>Acc.</th>
+    </tr></thead><tbody>`;
+  rows.forEach(h => {
+    t += `<tr>
+      <td><strong>${fmtD(h.vto_cobro)}</strong></td>
+      <td><strong>${fmt(h.monto)}</strong></td>
+      <td style="font-size:12px;color:var(--tx2)">${h.periodo_fact||'—'}</td>
+      <td style="font-size:12px;color:var(--tx2)">${fmtD(h.vto_real)||'—'}</td>
+      <td>${estadoBadge[h.estado]||h.estado}</td>
+      <td style="font-size:12px;max-width:180px">
+        ${h.detalle?`<span>${h.detalle}</span>`:''}
+        ${h.pagador?`<span class="bdg gray" style="margin-left:4px">${h.pagador}</span>`:''}
+      </td>
+      <td style="white-space:nowrap">
+        <button class="btn xs" onclick="editarHistorial('${h.id}')"><i class="ti ti-edit"></i></button>
+        <button class="btn xs dan" style="margin-left:3px" onclick="if(confirm('¿Eliminar este registro?'))delHistorial('${h.id}').then(renderHistorial)"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`;
+  });
+  t += '</tbody></table></div>';
+  return t;
+}
+
+function exportarHistorialCSV() {
+  getHistorial().then(all => {
+    if (!all.length) { alert('Sin datos para exportar'); return; }
+    const cols = ['servicio','vto_cobro','monto','periodo_fact','vto_real','estado','detalle','pagador','fecha_carga'];
+    const header = ['Servicio','Vto Cobro','Monto','Período','Vto Real Boleta','Estado','Detalle','Pagador','Fecha Carga'];
+    let csv = header.join(',') + '\n';
+    all.forEach(h => {
+      csv += cols.map(c => {
+        let v = c==='servicio' ? (HIST_LABELS[h[c]]||h[c]||'') : (h[c]||'');
+        return '"'+String(v).replace(/"/g,'""')+'"';
+      }).join(',') + '\n';
+    });
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'historial_boletas.csv'; a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+// Carga inicial de datos históricos (2025-2026) al primer uso
+async function cargarDatosIniciales() {
+  const existing = await getHistorial();
+  if (existing.length > 0) return; // ya tiene datos
+
+  const datos = [
+    // EDENOR 3 (Cta.7966)
+    {id:uid(),servicio:'edenor3',vto_cobro:'2025-01-10',monto:126896.58,vto_real:'2024-12-26',periodo_fact:'1 de 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2025-02-10',monto:131405.88,vto_real:'2025-01-24',periodo_fact:'2 de 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2025-03-10',monto:173497.91,vto_real:'2025-02-26',periodo_fact:'1 de 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2025-04-09',monto:176173.67,vto_real:'2025-03-25',periodo_fact:'2 de 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2025-05-08',monto:150375.30,vto_real:'2025-04-25',periodo_fact:'1 de 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2025-06-10',monto:151707.25,vto_real:'2025-05-26',periodo_fact:'2 de 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2025-07-05',monto:173861.00,vto_real:'2025-06-24',periodo_fact:'1 de 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2025-08-06',monto:180808.86,vto_real:'2025-07-25',periodo_fact:'2 de 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2025-09-07',monto:277282.80,vto_real:'2025-08-25',periodo_fact:'1 de 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2025-10-04',monto:280129.88,vto_real:'2025-09-24',periodo_fact:'2 de 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2025-11-05',monto:196975.75,vto_real:'2025-10-23',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2025-12-08',monto:305946.72,vto_real:'2025-11-25',periodo_fact:'Mensual',estado:'pagada',detalle:'Se cobró boleta anterior, pendiente respuesta Edenor',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2026-01-07',monto:271553.38,vto_real:'2025-12-24',periodo_fact:'NO BIMESTRAL',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2026-02-06',monto:199669.06,vto_real:'2026-01-26',periodo_fact:'NO BIMESTRAL',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2026-03-06',monto:230343.76,vto_real:'2026-02-24',periodo_fact:'NO BIMESTRAL',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2026-04-03',monto:207203.75,vto_real:'2026-03-25',periodo_fact:'NO BIMESTRAL',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2026-05-09',monto:236810.58,vto_real:'2026-04-24',periodo_fact:'NO BIMESTRAL',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'edenor3',vto_cobro:'2026-06-05',monto:276872.60,vto_real:'2026-05-26',periodo_fact:'NO BIMESTRAL',estado:'pagada',detalle:'PERÍODO ACTUAL',pagador:''},
+    // EDENOR 1 (Cta.4855)
+    {id:uid(),servicio:'edenor1',vto_cobro:'2025-01-10',monto:34446.00,vto_real:'2024-12-26',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2025-02-10',monto:35164.99,vto_real:'2025-01-24',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2025-03-10',monto:152072.67,vto_real:'2025-02-26',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2025-04-10',monto:155307.45,vto_real:'2025-03-25',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2025-05-08',monto:156242.74,vto_real:'2025-04-25',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2025-06-10',monto:57676.05,vto_real:'2025-05-26',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2025-07-05',monto:23960.22,vto_real:'2025-06-24',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2025-08-06',monto:24275.58,vto_real:'2025-07-25',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2025-09-07',monto:55929.90,vto_real:'2025-08-25',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2025-10-04',monto:55914.82,vto_real:'2025-09-24',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2025-11-05',monto:26828.07,vto_real:'2025-10-23',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2025-12-08',monto:41771.86,vto_real:'2025-11-25',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2026-01-07',monto:30749.95,vto_real:'2025-12-24',periodo_fact:'NO BIMESTRAL',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2026-02-07',monto:47721.12,vto_real:'2026-01-26',periodo_fact:'NO BIMESTRAL',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2026-03-06',monto:83369.56,vto_real:'2026-02-24',periodo_fact:'NO BIMESTRAL',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2026-04-03',monto:31155.10,vto_real:'2026-03-25',periodo_fact:'NO BIMESTRAL',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2026-05-09',monto:31148.88,vto_real:'2026-04-24',periodo_fact:'NO BIMESTRAL',estado:'pagada',detalle:'',pagador:'Mamá'},
+    {id:uid(),servicio:'edenor1',vto_cobro:'2026-06-05',monto:22265.78,vto_real:'2026-05-26',periodo_fact:'NO BIMESTRAL',estado:'pagada',detalle:'PERÍODO ACTUAL',pagador:'Mamá'},
+    // EDENOR 2 (Cta.6959) - MAXI
+    {id:uid(),servicio:'edenor2',vto_cobro:'2025-01-10',monto:14545.77,vto_real:'2024-12-11',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2025-02-10',monto:22561.36,vto_real:'2025-01-24',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2025-03-10',monto:64418.80,vto_real:'2025-02-26',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2025-04-09',monto:65842.62,vto_real:'2025-03-25',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2025-05-08',monto:46226.58,vto_real:'2025-04-25',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2025-06-10',monto:62015.39,vto_real:'2025-05-26',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2025-07-05',monto:45642.16,vto_real:'2025-06-24',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2025-08-06',monto:39882.44,vto_real:'2025-07-25',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2025-09-07',monto:44899.70,vto_real:'2025-08-25',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2025-10-07',monto:44899.17,vto_real:'2025-09-24',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2025-11-05',monto:26724.26,vto_real:'2025-10-23',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2025-12-08',monto:41766.96,vto_real:'2025-11-25',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2026-01-07',monto:32307.09,vto_real:'2025-12-24',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2026-02-06',monto:60810.76,vto_real:'2026-01-26',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2026-03-06',monto:168891.44,vto_real:'2026-02-24',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2026-04-03',monto:67743.30,vto_real:'2026-03-25',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2026-05-09',monto:47902.62,vto_real:'2026-04-24',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:'Maxi'},
+    {id:uid(),servicio:'edenor2',vto_cobro:'2026-06-05',monto:13615.58,vto_real:'2026-05-26',periodo_fact:'2 DE 2',estado:'pagada',detalle:'PERÍODO ACTUAL',pagador:'Maxi'},
+    // AYSA 1 (Cta.948) - Terreno
+    {id:uid(),servicio:'aysa1',vto_cobro:'2025-01-10',monto:90223.19,vto_real:'2024-12-19',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2025-02-10',monto:90223.19,vto_real:'2025-01-16',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2025-03-10',monto:93413.02,vto_real:'2025-02-17',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2025-04-09',monto:93413.01,vto_real:'2025-03-17',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2025-05-08',monto:102416.64,vto_real:'2025-04-14',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2025-06-10',monto:102416.63,vto_real:'2025-05-20',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2025-07-05',monto:104505.50,vto_real:'2025-06-17',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2025-08-06',monto:104505.49,vto_real:'2025-07-14',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2025-09-07',monto:101754.57,vto_real:'2025-08-22',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2025-10-07',monto:101754.57,vto_real:'2025-09-15',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2025-11-05',monto:106997.96,vto_real:'2025-10-13',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2025-12-08',monto:106997.94,vto_real:'2025-11-17',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2026-01-07',monto:107422.06,vto_real:'2025-12-15',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2026-02-06',monto:107422.05,vto_real:'2026-01-12',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2026-03-06',monto:113062.04,vto_real:'2026-02-12',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2026-04-03',monto:127505.58,vto_real:'2026-03-14',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2026-05-08',monto:127505.58,vto_real:'2026-04-20',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa1',vto_cobro:'2026-06-05',monto:127505.56,vto_real:'2026-05-19',periodo_fact:'2 DE 2',estado:'pagada',detalle:'PERÍODO ACTUAL',pagador:''},
+    // AYSA 2 (Cta.951)
+    {id:uid(),servicio:'aysa2',vto_cobro:'2025-01-10',monto:33344.50,vto_real:'2024-12-19',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2025-02-10',monto:33344.50,vto_real:'2025-01-16',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2025-03-10',monto:33344.50,vto_real:'2025-02-17',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2025-04-09',monto:33344.50,vto_real:'2025-03-17',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2025-05-08',monto:81499.02,vto_real:'2025-04-14',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2025-06-10',monto:81499.01,vto_real:'2025-05-20',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2025-07-05',monto:94081.94,vto_real:'2025-06-17',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2025-08-06',monto:98194.71,vto_real:'2025-07-14',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2025-09-07',monto:91284.42,vto_real:'2025-08-19',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2025-10-07',monto:91410.41,vto_real:null,periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2025-11-05',monto:91410.41,vto_real:'2025-10-13',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2025-12-07',monto:116623.89,vto_real:'2025-11-15',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2026-01-07',monto:116623.89,vto_real:'2025-12-15',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2026-02-06',monto:116623.88,vto_real:'2026-01-12',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2026-03-06',monto:85761.11,vto_real:'2026-02-18',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2026-04-03',monto:86808.04,vto_real:'2026-03-14',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2026-05-08',monto:86808.00,vto_real:'2026-04-20',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'aysa2',vto_cobro:'2026-06-05',monto:86808.04,vto_real:'2026-05-19',periodo_fact:'2 de 2',estado:'pagada',detalle:'PERÍODO ACTUAL',pagador:''},
+    // GAS 1 - Naturgy (355/7)
+    {id:uid(),servicio:'gas1',vto_cobro:'2025-01-10',monto:15423.00,vto_real:'2025-01-20',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2025-02-10',monto:14938.87,vto_real:'2025-02-17',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2025-03-10',monto:14879.38,vto_real:'2025-03-25',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2025-04-09',monto:14275.10,vto_real:'2025-04-21',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2025-05-08',monto:20796.57,vto_real:'2025-05-20',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2025-06-10',monto:15717.31,vto_real:'2025-06-18',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2025-07-05',monto:32225.74,vto_real:'2025-07-18',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2025-08-06',monto:31780.80,vto_real:'2025-08-18',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2025-09-07',monto:33630.79,vto_real:'2025-09-17',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2025-10-07',monto:33784.20,vto_real:'2025-10-17',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2025-11-05',monto:29670.98,vto_real:'2025-11-14',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2025-12-08',monto:29559.40,vto_real:'2025-12-16',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2026-01-07',monto:23905.84,vto_real:'2026-01-19',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2026-02-06',monto:23139.63,vto_real:'2026-02-18',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2026-03-06',monto:23139.63,vto_real:'2026-03-25',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2026-04-03',monto:24730.91,vto_real:'2026-04-16',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2026-05-09',monto:36077.04,vto_real:'2026-05-21',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas1',vto_cobro:'2026-06-05',monto:40577.14,vto_real:'2026-07-16',periodo_fact:'Mensual',estado:'pagada',detalle:'PERÍODO ACTUAL',pagador:''},
+    // GAS 2 - Naturgy (354/5)
+    {id:uid(),servicio:'gas2',vto_cobro:'2025-01-10',monto:36673.01,vto_real:'2025-01-20',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2025-02-10',monto:35600.00,vto_real:'2025-02-17',periodo_fact:'1do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2025-03-10',monto:32002.91,vto_real:'2025-03-25',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2025-04-09',monto:30526.60,vto_real:'2025-04-21',periodo_fact:'1do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2025-05-08',monto:54975.72,vto_real:'2025-05-20',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2025-06-10',monto:47876.46,vto_real:'2025-06-18',periodo_fact:'1do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2025-07-05',monto:68927.03,vto_real:'2025-07-18',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2025-08-06',monto:67559.88,vto_real:'2025-08-18',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2025-09-07',monto:52732.34,vto_real:'2025-09-17',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2025-10-07',monto:53056.70,vto_real:'2025-10-17',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2025-11-05',monto:56212.40,vto_real:'2025-11-17',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2025-12-08',monto:52896.00,vto_real:'2025-12-19',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2026-01-07',monto:52896.68,vto_real:'2026-01-19',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2026-02-06',monto:23139.63,vto_real:'2026-02-18',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2026-03-06',monto:48345.38,vto_real:'2026-03-25',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2026-04-03',monto:46837.38,vto_real:'2026-04-16',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2026-05-09',monto:69309.14,vto_real:'2026-05-21',periodo_fact:'2do MES',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'gas2',vto_cobro:'2026-06-05',monto:68119.82,vto_real:'2026-06-16',periodo_fact:'2do MES',estado:'pagada',detalle:'PERÍODO ACTUAL',pagador:''},
+    // CLARO
+    {id:uid(),servicio:'claro',vto_cobro:'2025-01-10',monto:16806.00,vto_real:'2024-12-23',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2025-02-10',monto:17385.99,vto_real:'2025-01-24',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2025-03-10',monto:17958.00,vto_real:'2025-02-24',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2025-04-09',monto:19046.10,vto_real:'2025-04-24',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2025-05-08',monto:19523.22,vto_real:'2025-05-23',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2025-06-10',monto:19231.42,vto_real:'2025-06-24',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2025-07-05',monto:17779.70,vto_real:'2025-07-25',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2025-08-06',monto:17963.30,vto_real:'2025-08-25',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2025-09-07',monto:18245.14,vto_real:'2025-09-24',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2025-10-07',monto:17891.81,vto_real:'2025-10-24',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2025-11-05',monto:17891.81,vto_real:'2025-11-24',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2025-12-08',monto:18482.76,vto_real:'2025-12-23',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2026-01-07',monto:37775.16,vto_real:'2026-01-22',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2026-02-06',monto:20129.14,vto_real:'2026-02-23',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2026-03-06',monto:20748.23,vto_real:'2026-03-25',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2026-04-03',monto:21557.36,vto_real:'2026-04-22',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2026-05-09',monto:21557.36,vto_real:'2026-05-22',periodo_fact:'Mensual',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'claro',vto_cobro:'2026-06-09',monto:22771.45,vto_real:'2026-05-21',periodo_fact:'Mensual',estado:'pagada',detalle:'PERÍODO ACTUAL',pagador:''},
+    // NETFLIX
+    {id:uid(),servicio:'netflix',vto_cobro:'2025-01-10',monto:15485.86,vto_real:null,periodo_fact:'Mensual',estado:'pagada',detalle:'Cuenta de Mamá',pagador:'Mamá'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2025-02-10',monto:14943.23,vto_real:null,periodo_fact:'Mensual',estado:'pagada',detalle:'Cuenta de Mamá',pagador:'Mamá'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2025-03-10',monto:15485.86,vto_real:null,periodo_fact:'Mensual',estado:'pagada',detalle:'Cuenta de Mamá',pagador:'Mamá'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2025-04-09',monto:21815.21,vto_real:null,periodo_fact:'Mensual',estado:'pagada',detalle:'Cuenta de Mamá',pagador:'Mamá'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2025-05-08',monto:31857.87,vto_real:null,periodo_fact:'Mensual',estado:'pagada',detalle:'Cuenta de Mamá',pagador:'Mamá'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2025-06-05',monto:31857.87,vto_real:null,periodo_fact:'Mensual',estado:'pagada',detalle:'Cuenta de Mamá',pagador:'Mamá'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2025-07-05',monto:18691.00,vto_real:null,periodo_fact:'Mensual',estado:'pagada',detalle:'14.83 USD total',pagador:'Camila'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2025-08-06',monto:18691.00,vto_real:null,periodo_fact:'Mensual',estado:'pagada',detalle:'14.83 USD total',pagador:'Camila'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2025-09-07',monto:16970.67,vto_real:null,periodo_fact:'Mensual',estado:'pagada',detalle:'12.21 USD total',pagador:'Camila'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2025-10-07',monto:16922.75,vto_real:'2025-10-01',periodo_fact:'Mensual',estado:'pagada',detalle:'11.83 USD total',pagador:'Camila'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2025-11-05',monto:16598.40,vto_real:'2025-11-01',periodo_fact:'Mensual',estado:'pagada',detalle:'11.20 USD total',pagador:'Camila'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2025-12-08',monto:16426.37,vto_real:'2025-12-01',periodo_fact:'Mensual',estado:'pagada',detalle:'11.14 USD total',pagador:'Camila'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2026-01-07',monto:16888.24,vto_real:'2026-01-01',periodo_fact:'Mensual',estado:'pagada',detalle:'11.14 USD total',pagador:'Camila'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2026-02-06',monto:20380.95,vto_real:'2026-02-01',periodo_fact:'Mensual',estado:'pagada',detalle:'13.95 USD total',pagador:'Camila'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2026-03-06',monto:20749.84,vto_real:'2026-03-01',periodo_fact:'Mensual',estado:'pagada',detalle:'14.33 USD total',pagador:'Camila'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2026-04-03',monto:21097.70,vto_real:'2026-04-01',periodo_fact:'Mensual',estado:'pagada',detalle:'14.60 USD total',pagador:'Camila'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2026-05-09',monto:21067.80,vto_real:'2026-05-01',periodo_fact:'Mensual',estado:'pagada',detalle:'14.60 USD total',pagador:'Camila'},
+    {id:uid(),servicio:'netflix',vto_cobro:'2026-06-05',monto:21064.72,vto_real:'2026-06-01',periodo_fact:'Mensual',estado:'pagada',detalle:'14.32 USD PERÍODO ACTUAL',pagador:'Camila'},
+    // MUNI ABL (430459/5)
+    {id:uid(),servicio:'muni1',vto_cobro:'2025-01-10',monto:43643.74,vto_real:'2025-01-15',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2025-02-10',monto:43643.74,vto_real:'2025-02-14',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2025-03-10',monto:45721.27,vto_real:'2025-03-14',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2025-04-09',monto:45721.27,vto_real:'2025-04-15',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2025-05-08',monto:47798.81,vto_real:'2025-05-15',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2025-06-10',monto:47798.81,vto_real:'2025-06-13',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2025-07-05',monto:51122.87,vto_real:'2025-07-15',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2025-08-06',monto:51122.87,vto_real:'2025-08-14',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2025-09-07',monto:52784.88,vto_real:'2025-09-16',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2025-10-07',monto:52784.88,vto_real:'2025-10-15',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2025-11-05',monto:54862.42,vto_real:'2025-11-14',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2025-12-08',monto:55262.42,vto_real:'2025-12-16',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2026-01-07',monto:57355.47,vto_real:'2026-01-16',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2026-02-06',monto:57755.47,vto_real:'2026-02-18',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2026-03-06',monto:57755.47,vto_real:'2026-03-16',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2026-04-03',monto:60664.02,vto_real:'2026-04-15',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2026-05-09',monto:64003.57,vto_real:'2026-05-15',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni1',vto_cobro:'2026-06-05',monto:65264.44,vto_real:null,periodo_fact:'Cuota 1',estado:'pagada',detalle:'PERÍODO ACTUAL',pagador:''},
+    // MUNI TERRENO (430458)
+    {id:uid(),servicio:'muni2',vto_cobro:'2025-01-10',monto:12107.47,vto_real:'2025-01-15',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2025-02-10',monto:12107.47,vto_real:'2025-02-15',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2025-03-10',monto:12697.45,vto_real:'2025-03-14',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2025-04-09',monto:12697.45,vto_real:'2025-04-15',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2025-05-08',monto:13287.42,vto_real:'2025-05-15',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2025-06-10',monto:13287.42,vto_real:'2025-06-13',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2025-07-05',monto:15241.81,vto_real:'2025-07-15',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2025-08-06',monto:14231.38,vto_real:'2025-08-14',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2025-09-07',monto:15382.70,vto_real:'2025-09-30',periodo_fact:'1 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2025-10-07',monto:14703.35,vto_real:'2025-10-15',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2025-11-05',monto:15693.34,vto_real:'2025-11-16',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2025-12-05',monto:16001.31,vto_real:'2025-12-16',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2026-01-05',monto:16001.31,vto_real:'2026-01-30',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2026-02-06',monto:16001.31,vto_real:'2026-02-18',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2026-03-06',monto:17227.28,vto_real:'2026-03-16',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2026-04-03',monto:17227.28,vto_real:'2026-04-15',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2026-05-09',monto:17889.22,vto_real:'2026-05-15',periodo_fact:'2 DE 2',estado:'pagada',detalle:'',pagador:''},
+    {id:uid(),servicio:'muni2',vto_cobro:'2026-06-05',monto:18241.64,vto_real:'2026-06-05',periodo_fact:'2 DE 2',estado:'pagada',detalle:'PERÍODO ACTUAL',pagador:''},
+    // ARBA
+    {id:uid(),servicio:'arba',vto_cobro:'2026-03-07',monto:28789.40,vto_real:null,periodo_fact:'Anual 2026 - Terreno',estado:'pagada',detalle:'Partida 117007302/5 — PA:40 / 400m²',pagador:''},
+    {id:uid(),servicio:'arba',vto_cobro:'2026-03-07',monto:110713.00,vto_real:null,periodo_fact:'Anual 2026 - Casa',estado:'pagada',detalle:'Partida 117006516 (sub-partidas -2,-3,-4,-5)',pagador:''},
+  ];
+
+  // Save all records
+  for (const d of datos) {
+    await saveHistorial(d);
+  }
+  console.log('Datos históricos cargados: ' + datos.length + ' registros');
+}
+
+// Auto-cargar al iniciar si no hay datos
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    cargarDatosIniciales().catch(console.error);
+  }, 1500);
+});
+
 </script>
 </body>
 </html>
