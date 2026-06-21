@@ -1020,6 +1020,27 @@ function switchTab(prefix, tab, el) {
   if (el) el.classList.add('active');
 }
 
+
+// ─── Utilidades ─────────────────────────────────────────
+const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0,maximumFractionDigits:0}).format(n||0);
+const fmtD = d => { if(!d) return ''; const [y,m,dd]=(d+'').split('-'); return `${dd}/${m}/${y}`; };
+const dvenc = d => { if(!d) return 999; const hoy=new Date(); hoy.setHours(0,0,0,0); const v=new Date(d+'T00:00:00'); return Math.round((v-hoy)/86400000); };
+const mesActual = () => { const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`; };
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+// localStorage helpers
+const LS_KEY = 'admindept_data';
+const lsData = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)||'{}'); } catch { return {}; } };
+const lsSave = d => localStorage.setItem(LS_KEY, JSON.stringify(d));
+const lsGet = key => { const d=lsData(); return d[key]||[]; };
+const lsUpsert = (key, item) => { const d=lsData(); d[key]=(d[key]||[]).filter(x=>x.id!==item.id); d[key].push(item); lsSave(d); };
+const lsDel = (key, id) => { const d=lsData(); d[key]=(d[key]||[]).filter(x=>x.id!==id); lsSave(d); };
+
+async function delItem(table, lsKey, id) {
+  if (!sb) { lsDel(lsKey, id); return; }
+  await sb.from(table).delete().eq('id', id);
+}
+
 function initSB() {
   try {
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
