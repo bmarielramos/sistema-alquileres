@@ -671,8 +671,8 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
     <div class="fg">
       <label>Estado</label>
       <select id="h-estado">
-        <option value="pagada">✅ Pagada</option>
         <option value="pendiente">⏳ Pendiente</option>
+        <option value="pagada">✅ Pagada</option>
         <option value="vencida">❌ Vencida</option>
       </select>
     </div>
@@ -2413,7 +2413,7 @@ function abrirHistorial(item=null) {
   document.getElementById('h-vto-real').value = item?.vto_real || '';
   document.getElementById('h-monto').value = item?.monto || '';
   document.getElementById('h-periodo').value = item?.periodo_fact || '';
-  document.getElementById('h-estado').value = item?.estado || 'pagada';
+  document.getElementById('h-estado').value = item?.estado || 'pendiente';
   document.getElementById('h-detalle').value = item?.detalle || '';
   document.getElementById('h-pagador').value = item?.pagador || '';
   document.getElementById('mo-hist-title').innerHTML = item
@@ -3317,34 +3317,13 @@ const ACCESOS_DEFAULT = [
 
 async function getAccesos() {
   const key = 'adm_accesos';
-  // Siempre usar localStorage como fuente principal para configuración
   const d = lsData();
-  if (d[key]) return d[key];
-  // Si hay supabase, intentar traer de allí
-  if (sb) {
-    try {
-      const {data, error} = await sb.from('configuracion').select('valor').eq('clave', key).maybeSingle();
-      if (!error && data?.valor) {
-        const parsed = JSON.parse(data.valor);
-        // Guardar en localStorage para próximas veces
-        d[key] = parsed; lsSave(d);
-        return parsed;
-      }
-    } catch(e) { /* tabla no existe, usar default */ }
-  }
-  return ACCESOS_DEFAULT;
+  return d[key] || ACCESOS_DEFAULT;
 }
 
 async function saveAccesos(accesos) {
   const key = 'adm_accesos';
-  // Guardar en localStorage siempre
   const d = lsData(); d[key] = accesos; lsSave(d);
-  // Intentar también en supabase si está disponible
-  if (sb) {
-    try {
-      await sb.from('configuracion').upsert({ clave: key, valor: JSON.stringify(accesos) });
-    } catch(e) { /* ignorar si tabla no existe */ }
-  }
 }
 
 async function renderDashAccesos() {
