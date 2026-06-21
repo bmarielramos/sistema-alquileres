@@ -3055,7 +3055,26 @@ async function buildCBDistribucion() {
   const blkPct = document.getElementById('cb-blk-pct');
   const tipo = _cbServicio.tipo;
   const distrib = _cbServicio.distrib;
+
+  // PAGO ÚNICO — no se divide, no mostrar distribución
+  if (distrib === 'unico') {
+    blk.style.display = '';
+    blkLuz.style.display = 'none';
+    blkPct.style.display = 'none';
+    blk.innerHTML = `<div style="padding:12px 14px;background:var(--bg2);border-radius:var(--r);font-size:13px;color:var(--tx2)">
+      <i class="ti ti-circle-check" style="color:var(--greentx)"></i>
+      <strong>Pago único</strong> — Este servicio lo paga completo
+      ${_cbDepts.map(d=>'<span class="bdg gray" style="margin-left:4px">Depto '+d.num+'</span>').join('')}.
+      No se divide entre inquilinos.
+    </div>`;
+    return;
+  }
+
   blk.style.display = '';
+  // Restaurar contenido original del bloque si fue reemplazado por mensaje de pago único
+  if (!document.getElementById('cb-blk-luz')) {
+    // reconstruir estructura — no debería pasar pero por seguridad
+  }
   if (tipo === 'luz' || distrib === 'medidor') {
     blkLuz.style.display = '';
     blkPct.style.display = 'none';
@@ -3111,6 +3130,7 @@ async function buildCBDistribucion() {
 
 function recalcCB() {
   if (!_cbServicio || !_cbDepts.length) return;
+  if (_cbServicio.distrib === 'unico') return; // pago único, nada que calcular
   const total = parseFloat(document.getElementById('cb-total').value) || 0;
   const tipo = _cbServicio.tipo;
   const distrib = _cbServicio.distrib;
