@@ -1187,7 +1187,14 @@ async function saveCont(c) {
   }
   if (error) { console.error('Error guardando contrato:', error); alert('Error al guardar contrato: ' + error.message); }
 }
-async function saveServ(s) { if (!sb) { lsUpsert('servs',s); return; } await sb.from('servicios').upsert(s); }
+async function saveServ(s) {
+  if (!sb) { lsUpsert('servs',s); return; }
+  const {error} = await sb.from('servicios').upsert(s);
+  if (error) {
+    console.error('saveServ error:', error.message, 'columnas:', Object.keys(s));
+    alert('Error guardando boleta: ' + error.message);
+  }
+}
 async function saveMant(m) { if (!sb) { lsUpsert('mants',m); return; } await sb.from('mantenimiento').upsert(m); }
 
 // ─── Tareas pendientes ───────────────────────────────────
