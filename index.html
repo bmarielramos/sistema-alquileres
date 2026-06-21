@@ -1759,7 +1759,7 @@ async function renderServs(){
       else vencBadge=`<span class="bdg green">${fmtD(s.fecha_vencimiento)}</span>`;
     }
     h+=`<tr>
-    <td>${ic[s.tipo]||''} <strong>${s.tipo.charAt(0).toUpperCase()+s.tipo.slice(1)}</strong></td>
+    <td>${ic[s.tipo]||''} <strong>${(TIPO_LABEL[s.tipo]||s.tipo.charAt(0).toUpperCase()+s.tipo.slice(1))}</strong></td>
     <td>${s.periodo||'—'}</td>
     <td style="font-family:monospace;font-size:12px">${s.numero_boleta||'—'}</td>
     <td>${fmt(s.total)}</td>
@@ -2151,7 +2151,7 @@ async function renderDash(){
     const ic={luz:'⚡',gas:'🔥',agua:'💧'};
     const dias=dvenc(s.fecha_vencimiento);
     const b=dias<=0?'gray':dias<=5?'red':dias<=10?'amber':'green';
-    return `<div class="vb-row"><div><div style="font-size:13px;font-weight:500">${ic[s.tipo]||''} ${s.tipo.charAt(0).toUpperCase()+s.tipo.slice(1)} — ${s.periodo}</div>${s.numero_boleta?`<div style="font-size:11px;color:var(--tx2)">N° ${s.numero_boleta}</div>`:''}</div><span class="bdg ${b}">${dias<=0?'Vencida':dias+'d — '+fmtD(s.fecha_vencimiento)}</span></div>`;
+    return `<div class="vb-row"><div><div style="font-size:13px;font-weight:500">${ic[s.tipo]||''} ${(TIPO_LABEL[s.tipo]||s.tipo.charAt(0).toUpperCase()+s.tipo.slice(1))} — ${s.periodo}</div>${s.numero_boleta?`<div style="font-size:11px;color:var(--tx2)">N° ${s.numero_boleta}</div>`:''}</div><span class="bdg ${b}">${dias<=0?'Vencida':dias+'d — '+fmtD(s.fecha_vencimiento)}</span></div>`;
   }).join('');
   // estado pagos
   const dp=document.getElementById('dash-pagos');
@@ -2685,6 +2685,7 @@ async function delDatoServ(id) {
   await sb.from('datos_servicios').delete().eq('id', id);
 }
 
+const TIPO_LABEL={luz:'Luz',gas:'Gas',agua:'Agua',bomba:'Bomba',abl:'ARBA',municipal:'Municipal',internet:'Internet',streaming:'Streaming'};
 const DS_ICONS = {luz:'⚡',gas:'🔥',agua:'💧',bomba:'💡',abl:'🏛️',municipal:'🏙️',internet:'🌐',streaming:'📺'};
 
 async function abrirDatoServ(item=null) {
@@ -2767,7 +2768,7 @@ async function renderDatosServicios() {
       return d ? `<span class="bdg gray">Dpto ${d.num}</span>` : '';
     }).join(' ');
     h += `<tr>
-      <td>${DS_ICONS[ds.tipo]||''} <strong>${ds.tipo.charAt(0).toUpperCase()+ds.tipo.slice(1)}</strong></td>
+      <td>${DS_ICONS[ds.tipo]||''} <strong>${(TIPO_LABEL[ds.tipo]||ds.tipo.charAt(0).toUpperCase()+ds.tipo.slice(1))}</strong></td>
       <td style="font-family:monospace">${ds.cuenta}</td>
       <td>${ds.empresa||'—'}</td>
       <td style="font-size:12px">${ds.titular||'—'}</td>
