@@ -342,10 +342,18 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
     <label>Departamentos que comparten este servicio</label>
     <div id="ds-depts-check" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;padding:10px;background:var(--bg2);border-radius:var(--r)"></div>
   </div>
+  <!-- Bloque % fijo — aparece solo cuando se elige porcentaje -->
+  <div id="ds-blk-pct" style="display:none;margin-bottom:.8rem">
+    <div style="padding:10px 14px;background:var(--bg2);border-radius:var(--r)">
+      <p style="font-size:12px;color:var(--tx2);margin:0 0 8px">Ingresá el % que paga cada departamento. Deben sumar 100%.</p>
+      <div id="ds-pct-rows" style="display:flex;flex-direction:column;gap:6px"></div>
+      <div style="font-size:12px;margin-top:8px;color:var(--tx2)">Suma: <strong id="ds-pct-suma">0%</strong></div>
+    </div>
+  </div>
   <div class="fg2">
     <div class="fg">
       <label>Forma de distribución</label>
-      <select id="ds-distrib">
+      <select id="ds-distrib" onchange="onDsDistrib()">
         <option value="medidor">Por medidor individual (kWh)</option>
         <option value="partes-iguales">Partes iguales</option>
         <option value="porcentaje">Por porcentaje fijo</option>
@@ -2688,6 +2696,49 @@ async function delDatoServ(id) {
 const TIPO_LABEL={luz:'Luz',gas:'Gas',agua:'Agua',bomba:'Bomba',abl:'ARBA',municipal:'Municipal',internet:'Internet',streaming:'Streaming'};
 const DS_ICONS = {luz:'⚡',gas:'🔥',agua:'💧',bomba:'💡',abl:'🏛️',municipal:'🏙️',internet:'🌐',streaming:'📺'};
 
+let _dsPctFijo = {};
+
+function onDsDistrib() {
+  const distrib = document.getElementById('ds-distrib')?.value;
+  const blk = document.getElementById('ds-blk-pct');
+  if (!blk) return;
+  blk.style.display = distrib === 'porcentaje' ? '' : 'none';
+  if (distrib !== 'porcentaje') return;
+  // Build % inputs for checked deptos
+  const checked = [...document.querySelectorAll('#ds-depts-check input:checked')];
+  const rows = document.getElementById('ds-pct-rows');
+  if (!rows) return;
+  rows.innerHTML = '';
+  if (!checked.length) {
+    rows.innerHTML = '<p style="font-size:12px;color:var(--tx3)">Primero seleccioná los departamentos arriba.</p>';
+    return;
+  }
+  checked.forEach(cb => {
+    const did = cb.value;
+    const label = cb.closest('label')?.textContent?.trim() || did;
+    const val = _dsPctFijo[did] || '';
+    rows.innerHTML += `<div style="display:flex;align-items:center;gap:10px">
+      <span style="min-width:90px;font-size:13px;font-weight:600">${label}</span>
+      <input id="ds-pct-${did}" type="number" value="${val}" min="0" max="100" step="0.01" placeholder="0"
+        style="width:80px;padding:4px 8px;border-radius:6px;border:1px solid var(--brd);font-size:13px"
+        oninput="updateDsPctSuma()">
+      <span style="font-size:13px;color:var(--tx2)">%</span>
+    </div>`;
+  });
+  updateDsPctSuma();
+}
+
+function updateDsPctSuma() {
+  const inputs = document.querySelectorAll('[id^="ds-pct-"]');
+  let suma = 0;
+  inputs.forEach(i => { suma += parseFloat(i.value)||0; });
+  const el = document.getElementById('ds-pct-suma');
+  if (el) {
+    el.textContent = suma.toFixed(1) + '%';
+    el.style.color = Math.abs(suma-100) < 0.1 ? 'var(--acc)' : (suma > 100 ? '#c0392b' : 'var(--tx2)');
+  }
+}
+
 async function abrirDatoServ(item=null) {
   const depts = await getDepts();
   const chk = document.getElementById('ds-depts-check');
@@ -2695,7 +2746,7 @@ async function abrirDatoServ(item=null) {
   depts.forEach(d => {
     const checked = item?.dept_ids?.includes(d.id) ? 'checked' : '';
     chk.innerHTML += `<label style="display:flex;align-items:center;gap:4px;font-size:13px;background:var(--bg3);padding:4px 8px;border-radius:20px;cursor:pointer">
-      <input type="checkbox" value="${d.id}" ${checked}> Depto ${d.num}
+      <input type="checkbox" value="${d.id}" ${checked} onchange="onDsDistrib()"> Depto ${d.num}
     </label>`;
   });
   document.getElementById('ds-id').value = item?.id || '';
@@ -2705,11 +2756,13 @@ async function abrirDatoServ(item=null) {
   document.getElementById('ds-empresa').value = item?.empresa || '';
   document.getElementById('ds-direccion').value = item?.direccion || '';
   document.getElementById('ds-distrib').value = item?.distrib || 'medidor';
+  _dsPctFijo = item?.pct_fijo || {};
   document.getElementById('ds-dia-venc').value = item?.dia_venc || '';
   document.getElementById('ds-notas').value = item?.notas || '';
   document.getElementById('mo-dato-serv-title').innerHTML = item
     ? '<i class="ti ti-edit"></i> Editar Servicio'
     : '<i class="ti ti-database"></i> Nuevo Servicio';
+  setTimeout(onDsDistrib, 50);
   om('mo-dato-serv');
 }
 
@@ -2718,6 +2771,17 @@ async function guardarDatoServ() {
   const tipo = document.getElementById('ds-tipo').value;
   if (!cuenta || !tipo) { alert('Ingresá tipo y número de cuenta (*)'); return; }
   const dept_ids = [...document.querySelectorAll('#ds-depts-check input:checked')].map(c=>c.value);
+  const distrib = document.getElementById('ds-distrib').value;
+  // Recopilar % fijos si corresponde
+  const pct_fijo = {};
+  if (distrib === 'porcentaje') {
+    dept_ids.forEach(did => {
+      const el = document.getElementById('ds-pct-' + did);
+      if (el) pct_fijo[did] = parseFloat(el.value) || 0;
+    });
+    const suma = Object.values(pct_fijo).reduce((a,b)=>a+b,0);
+    if (Math.abs(suma - 100) > 0.1) { alert(`Los porcentajes deben sumar 100%. Suma actual: ${suma.toFixed(1)}%`); return; }
+  }
   const ds = {
     id: document.getElementById('ds-id').value || uid(),
     tipo,
@@ -2726,7 +2790,8 @@ async function guardarDatoServ() {
     empresa: document.getElementById('ds-empresa').value || '',
     direccion: document.getElementById('ds-direccion').value || '',
     dept_ids,
-    distrib: document.getElementById('ds-distrib').value,
+    distrib,
+    pct_fijo,
     dia_venc: parseInt(document.getElementById('ds-dia-venc').value) || null,
     notas: document.getElementById('ds-notas').value || '',
   };
@@ -2894,17 +2959,21 @@ function buildCBDistribucion() {
     blkPct.style.display = '';
     // Build pct inputs
     const esIgual = distrib === 'partes-iguales';
+    const esPctFijo = distrib === 'porcentaje';
     let h = '';
     _cbDepts.forEach((d, i) => {
-      const defVal = esIgual ? (100/_cbDepts.length).toFixed(2) : '';
+      const pctFijoVal = _cbServicio?.pct_fijo?.[d.id] ?? '';
+      const defVal = esIgual ? (100/_cbDepts.length).toFixed(2) : (esPctFijo ? pctFijoVal : '');
+      const isReadonly = esIgual || esPctFijo;
+      const lbl = esPctFijo ? `% <span style="font-size:10px;color:var(--acc)">(fijo)</span>` : '%';
       h += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
         <span style="min-width:80px;font-size:13px"><strong>Depto ${d.num}</strong></span>
-        <div class="fg" style="margin:0;width:100px"><label style="font-size:11px">%</label><input id="cb-pct-${d.id}" type="number" placeholder="0" value="${defVal}" min="0" step="0.01" oninput="recalcCB()" style="font-size:13px" ${esIgual?'readonly':''}></div>
+        <div class="fg" style="margin:0;width:110px"><label style="font-size:11px">${lbl}</label><input id="cb-pct-${d.id}" type="number" placeholder="0" value="${defVal}" min="0" step="0.01" oninput="recalcCB()" style="font-size:13px${isReadonly?';background:var(--bg2)':''}" ${isReadonly?'readonly':''}></div>
         <div class="fg" style="margin:0;width:140px"><label style="font-size:11px">Monto ($)</label><input id="cb-monto-${d.id}" type="text" readonly placeholder="—" style="font-size:13px;color:var(--acc)"></div>
       </div>`;
     });
     document.getElementById('cb-dist-pct').innerHTML = h;
-    if (esIgual) recalcCB();
+    if (esIgual || esPctFijo) recalcCB();
   }
 }
 
