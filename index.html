@@ -2408,8 +2408,21 @@ async function saveHistorial(h) {
 }
 
 async function delHistorial(id) {
-  if (!sb) { lsDel('historial', id); return; }
-  await sb.from('historial_boletas').delete().eq('id', id);
+  // Borrar de historial_boletas
+  if (sb) {
+    await sb.from('historial_boletas').delete().eq('id', id);
+    // Borrar también de servicios (el id de servicios puede ser el mismo o con sufijo _h)
+    await sb.from('servicios').delete().eq('id', id);
+    const idBase = id.endsWith('_h') ? id.slice(0, -2) : id + '_h';
+    await sb.from('servicios').delete().eq('id', idBase);
+    await sb.from('historial_boletas').delete().eq('id', idBase);
+  } else {
+    lsDel('historial', id);
+    lsDel('servs', id);
+    const idBase = id.endsWith('_h') ? id.slice(0, -2) : id + '_h';
+    lsDel('servs', idBase);
+    lsDel('historial', idBase);
+  }
 }
 
 function abrirHistorial(item=null) {
@@ -2550,7 +2563,7 @@ function buildHistTable(rows, estadoBadge) {
       </td>
       <td style="white-space:nowrap">
         <button class="btn xs" onclick="editarHistorial('${h.id}')"><i class="ti ti-edit"></i></button>
-        <button class="btn xs dan" style="margin-left:3px" onclick="if(confirm('¿Eliminar este registro?'))delHistorial('${h.id}').then(renderHistorial)"><i class="ti ti-trash"></i></button>
+        <button class="btn xs dan" style="margin-left:3px" onclick="if(confirm('¿Eliminar este registro?'))delHistorial('${h.id}').then(()=>{renderHistorial();renderDash();if(document.getElementById('page-cobros')?.classList.contains('active'))renderCobros();})"><i class="ti ti-trash"></i></button>
       </td>
     </tr>`;
   });
@@ -3249,8 +3262,9 @@ async function guardarBoleta() {
       distribucion[d.id] = {monto, pct:metodo==='frac'?v*100:v};
     });
   }
+  const boletaId = uid();
   const serv = {
-    id: uid(), tipo, periodo, total,
+    id: boletaId, tipo, periodo, total,
     metodo: (tipo==='luz'||distrib==='medidor')?'kw':'porcentaje',
     distribucion, numero_boleta,
     fecha_vencimiento: document.getElementById('cb-venc').value||null,
@@ -3260,7 +3274,7 @@ async function guardarBoleta() {
   // También guardar en historial automáticamente
   const hoy = new Date().toISOString().slice(0,10);
   const histEntry = {
-    id: uid(),
+    id: boletaId + '_h',
     servicio: (() => {
       // Buscar la clave correcta del historial por número de cuenta
       const cuenta = _cbServicio?.cuenta || '';
