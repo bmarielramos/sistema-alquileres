@@ -313,7 +313,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
         <option value="gas">🔥 Gas</option>
         <option value="agua">💧 Agua</option>
         <option value="bomba">💡 Bomba de agua</option>
-        <option value="abl">🏛️ ABL</option>
+        <option value="abl">🏛️ ARBA</option>
         <option value="municipal">🏙️ Imp. Municipal</option>
         <option value="internet">🌐 Internet</option>
         <option value="streaming">📺 Streaming</option>
@@ -385,7 +385,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
           <option value="gas">🔥 Gas</option>
           <option value="agua">💧 Agua</option>
           <option value="bomba">💡 Bomba de agua</option>
-          <option value="abl">🏛️ ABL</option>
+          <option value="abl">🏛️ ARBA</option>
           <option value="municipal">🏙️ Imp. Municipal</option>
           <option value="internet">🌐 Internet</option>
           <option value="streaming">📺 Streaming</option>
@@ -503,7 +503,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
           <option value="gas2">🔥 Gas 2 - Naturgy (Cta.354/5)</option>
           <option value="claro">🌐 Claro Internet</option>
           <option value="netflix">📺 Netflix</option>
-          <option value="muni1">🏛️ Muni ABL (Cta.430459/5)</option>
+          <option value="muni1">🏛️ ARBA (Cta.430459/5)</option>
           <option value="muni2">🏛️ Muni Terreno (Cta.430458)</option>
           <option value="arba">📄 ARBA</option>
         </select>
@@ -560,7 +560,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
         <option value="gas2">🔥 Gas 2 - Naturgy (354/5)</option>
         <option value="claro">🌐 Claro Internet</option>
         <option value="netflix">📺 Netflix</option>
-        <option value="muni1">🏛️ Muni ABL (430459/5)</option>
+        <option value="muni1">🏛️ ARBA (430459/5)</option>
         <option value="muni2">🏛️ Muni Terreno (430458)</option>
         <option value="arba">📄 ARBA</option>
       </select>
@@ -707,7 +707,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
     <div class="fg"><label>⚡ N° Cliente Luz</label><input id="d-nc-luz" type="text" placeholder="10012345"></div>
     <div class="fg"><label>🔥 N° Cliente Gas</label><input id="d-nc-gas" type="text" placeholder="20054321"></div>
     <div class="fg"><label>💧 N° Cliente Agua</label><input id="d-nc-agua" type="text" placeholder="AG-00987"></div>
-    <div class="fg"><label>🏛️ N° Cliente ABL</label><input id="d-nc-abl" type="text" placeholder="Ej: 12345-6"></div>
+    <div class="fg"><label>🏛️ N° Cliente ARBA</label><input id="d-nc-abl" type="text" placeholder="Ej: 12345-6"></div>
     <div class="fg"><label>🏙️ N° Cliente Imp. Municipal</label><input id="d-nc-municipal" type="text" placeholder="Ej: 98765"></div>
   </div>
 
@@ -841,7 +841,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
         <option value="gas">🔥 Gas</option>
         <option value="agua">💧 Agua</option>
         <option value="bomba">💡 Bomba de agua</option>
-        <option value="abl">🏛️ ABL</option>
+        <option value="abl">🏛️ ARBA</option>
         <option value="municipal">🏙️ Imp. Municipal</option>
         <option value="internet">🌐 Internet</option>
         <option value="streaming">📺 Streaming</option>
@@ -1308,7 +1308,7 @@ async function renderDepts() {
   el.innerHTML='<div class="ld"><span class="sp"></span>Cargando...</div>';
   const [depts,conts,inqs]=await Promise.all([getDepts(),getConts(),getInqs()]);
   if (!depts.length){el.innerHTML='<p style="color:var(--tx2);padding:.5rem 0">Sin departamentos. Agregá el primero.</p>';return;}
-  let h=`<table><thead><tr><th>Dpto</th><th>Piso</th><th>m²</th><th>Estado</th><th>⚡ Luz</th><th>🔥 Gas</th><th>💧 Agua</th><th>🏛️ ABL</th><th>🏙️ Mun.</th><th>Bomba</th><th>Inquilino</th><th>Acciones</th></tr></thead><tbody>`;
+  let h=`<table><thead><tr><th>Dpto</th><th>Piso</th><th>m²</th><th>Estado</th><th>⚡ Luz</th><th>🔥 Gas</th><th>💧 Agua</th><th>🏛️ ARBA</th><th>🏙️ Mun.</th><th>Bomba</th><th>Inquilino</th><th>Acciones</th></tr></thead><tbody>`;
   depts.forEach(d=>{
     const cont=conts.find(c=>c.dept_id===d.id&&c.estado==='activo');
     const inq=cont?inqs.find(i=>i.id===cont.inq_id):null;
@@ -1580,7 +1580,7 @@ function buscarDeptPorNc(){
   const campoMap = {luz:'nc_luz', gas:'nc_gas', agua:'nc_agua', bomba:'nc_luz', abl:'nc_abl', municipal:'nc_municipal', internet:'nc_internet', streaming:'nc_internet'};
   const campo = campoMap[tipo];
   const encontrados = _todosLosDepts.filter(d => d[campo] && d[campo].toString().trim() === nc);
-  const tipoLabel={luz:'luz',gas:'gas',agua:'agua',abl:'ABL',municipal:'Imp. Municipal'}[tipo];
+  const tipoLabel={luz:'luz',gas:'gas',agua:'agua',abl:'ARBA',municipal:'Imp. Municipal'}[tipo];
   if(encontrados.length === 0){
     res.innerHTML=`<div class="al warn" style="padding:5px 10px;margin:0"><i class="ti ti-alert-triangle"></i> No se encontró ningún departamento con ese N° de cliente de ${tipoLabel}. Verificá que esté cargado en el departamento.</div>`;
     _servDepts = _todosLosDepts.filter(d=>d.estado==='ocupado');
@@ -1600,7 +1600,7 @@ function onTipoServ(){
   const esGasAgua=['gas','agua','bomba','abl','municipal','internet','streaming'].includes(tipo);
   document.getElementById('blk-luz').style.display=esLuz?'':'none';
   document.getElementById('blk-gasagua').style.display=esGasAgua?'':'none';
-  const labels={gas:'Gas',agua:'Agua',bomba:'Bomba de agua',abl:'ABL',municipal:'Imp. Municipal',internet:'Internet',streaming:'Streaming'};
+  const labels={gas:'Gas',agua:'Agua',bomba:'Bomba de agua',abl:'ARBA',municipal:'Imp. Municipal',internet:'Internet',streaming:'Streaming'};
   document.getElementById('blk-tipo-label').textContent=labels[tipo]||tipo;
   // re-buscar con el nuevo tipo por si ya había un N° cargado
   const nc = document.getElementById('s-nbolt').value.trim();
@@ -1864,7 +1864,7 @@ async function renderCobros(){
   const servMes=servs.filter(s=>s.periodo===mes);
   const pagadosIds=new Set(pagos.filter(p=>p.estado==='pagado').map(p=>p.contrato_id));
   let totalGen=0;
-  let h=`<table><thead><tr><th>Dpto</th><th>Inquilino</th><th>Alquiler</th><th>⚡ Luz</th><th>🔥 Gas</th><th>💧 Agua</th><th>🏛️ ABL</th><th>🏙️ Mun.</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>`;
+  let h=`<table><thead><tr><th>Dpto</th><th>Inquilino</th><th>Alquiler</th><th>⚡ Luz</th><th>🔥 Gas</th><th>💧 Agua</th><th>🏛️ ARBA</th><th>🏙️ Mun.</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>`;
   activos.forEach(c=>{
     const dept=depts.find(d=>d.id===c.dept_id);
     const inq=inqs.find(i=>i.id===c.inq_id);
@@ -1924,7 +1924,7 @@ async function _buildRecibo(contId, mes, esPago){
   let rows=`<tr><td>Alquiler mensual</td><td style="text-align:right">${fmt(c.monto)}</td></tr>`;
   let totalServ=0;
   const tipoIcon={luz:'⚡',gas:'🔥',agua:'💧',abl:'🏛️',municipal:'🏙️'};
-  const tipoLabel={luz:'Luz',gas:'Gas',agua:'Agua',abl:'ABL',municipal:'Imp. Municipal'};
+  const tipoLabel={luz:'Luz',gas:'Gas',agua:'Agua',abl:'ARBA',municipal:'Imp. Municipal'};
   servMes.forEach(s=>{
     const dist=s.distribucion?.[c.dept_id];
     if(!dist||!dist.monto)return;
@@ -2230,7 +2230,7 @@ const HIST_LABELS = {
   gas2:'🔥 Gas 2 - Naturgy (354/5)',
   claro:'🌐 Claro Internet',
   netflix:'📺 Netflix',
-  muni1:'🏛️ Muni ABL (430459/5)',
+  muni1:'🏛️ ARBA (430459/5)',
   muni2:'🏛️ Muni Terreno (430458)',
   arba:'📄 ARBA'
 };
@@ -2609,7 +2609,7 @@ async function cargarDatosIniciales() {
     {id:uid(),servicio:'netflix',vto_cobro:'2026-04-03',monto:21097.70,vto_real:'2026-04-01',periodo_fact:'Mensual',estado:'pagada',detalle:'14.60 USD total',pagador:'Camila'},
     {id:uid(),servicio:'netflix',vto_cobro:'2026-05-09',monto:21067.80,vto_real:'2026-05-01',periodo_fact:'Mensual',estado:'pagada',detalle:'14.60 USD total',pagador:'Camila'},
     {id:uid(),servicio:'netflix',vto_cobro:'2026-06-05',monto:21064.72,vto_real:'2026-06-01',periodo_fact:'Mensual',estado:'pagada',detalle:'14.32 USD PERÍODO ACTUAL',pagador:'Camila'},
-    // MUNI ABL (430459/5)
+    // ARBA (430459/5)
     {id:uid(),servicio:'muni1',vto_cobro:'2025-01-10',monto:43643.74,vto_real:'2025-01-15',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
     {id:uid(),servicio:'muni1',vto_cobro:'2025-02-10',monto:43643.74,vto_real:'2025-02-14',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
     {id:uid(),servicio:'muni1',vto_cobro:'2025-03-10',monto:45721.27,vto_real:'2025-03-14',periodo_fact:'Cuota 1',estado:'pagada',detalle:'',pagador:''},
