@@ -1783,7 +1783,38 @@ async function guardarServ(){
     });
   }
   const s={id,tipo,periodo,total,metodo:tipo==='luz'?'kw':'porcentaje',distribucion,numero_boleta,fecha_vencimiento,fecha:new Date().toISOString().slice(0,10)};
-  await saveServ(s); cm('mo-serv'); renderServs();
+  await saveServ(s);
+  // Sincronizar con historial_boletas
+  const hoy = new Date().toISOString().slice(0,10);
+  const cuentaMapS = {
+    '4855':'edenor1','5362664855':'edenor1','6959':'edenor2','2301716959':'edenor2',
+    '7966':'edenor3','8397487966':'edenor3','948':'aysa1','1718948':'aysa1',
+    '951':'aysa2','1718951':'aysa2','355/7':'gas1','222355/7':'gas1',
+    '354/5':'gas2','222354/5':'gas2','21264378892':'claro','430459/5':'muni1',
+    '430458/1':'muni2','430458':'muni2'
+  };
+  let svKey = tipo;
+  if (numero_boleta) {
+    for (const [k,v] of Object.entries(cuentaMapS)) {
+      if (numero_boleta.includes(k)||k.includes(numero_boleta)) { svKey=v; break; }
+    }
+  }
+  const histS = {
+    id: s.id + '_h',
+    servicio: svKey,
+    vto_cobro: fecha_vencimiento || hoy,
+    vto_real: fecha_vencimiento || null,
+    monto: total,
+    periodo_fact: periodo,
+    estado: 'pendiente',
+    detalle: numero_boleta ? 'N° ' + numero_boleta : null,
+    fecha_carga: hoy
+  };
+  await saveHistorial(histS);
+  cm('mo-serv');
+  renderServs();
+  // Recalcular cobros si está visible
+  if (document.getElementById('page-cobros')?.classList.contains('active')) renderCobros();
 }
 
 async function renderServs(){
@@ -1821,7 +1852,7 @@ async function renderServs(){
     <td style="white-space:nowrap">
       <button class="btn sm" onclick="verDetServ('${s.id}')"><i class="ti ti-eye"></i></button>
       <button class="btn sm pri" style="margin-left:3px" onclick="editServ('${s.id}')"><i class="ti ti-edit"></i></button>
-      <button class="btn sm dan" style="margin-left:3px" onclick="if(confirm('¿Eliminar?'))delItem('servicios','servs','${s.id}').then(renderServs)"><i class="ti ti-trash"></i></button>
+      <button class="btn sm dan" style="margin-left:3px" onclick="if(confirm('¿Eliminar?'))delItem('servicios','servs','${s.id}').then(()=>{renderServs();if(sb)sb.from('historial_boletas').delete().eq('id','${s.id}_h').then(()=>{});if(document.getElementById('page-cobros')?.classList.contains('active'))renderCobros();})"><i class="ti ti-trash"></i></button>
     </td></tr>`;
   });
   el.innerHTML=h+'</tbody></table>';
@@ -3231,6 +3262,8 @@ async function guardarBoleta() {
   if (!sb) lsUpsert('historial', histEntry);
   if (hErr) console.error('Error guardando en historial:', hErr.message);
   alert('✅ Boleta guardada y registrada en Historial');
+  // Recalcular cobros si está visible
+  if (document.getElementById('page-cobros')?.classList.contains('active')) renderCobros();
   renderCargarBoleta();
 }
 
