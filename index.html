@@ -108,6 +108,15 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
 .dr .dn{width:55px;font-weight:500;font-size:13px;flex-shrink:0}
 .dr input{flex:1}
 /* receipt */
+.dc-card { padding:0!important; overflow:hidden; }
+.dc-hdr { display:flex;justify-content:space-between;align-items:center;padding:.85rem 1rem;cursor:pointer;user-select:none; }
+.dc-hdr:hover { background:var(--bg2); }
+.dc-hdr h3,.dc-hdr span { margin:0;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px; }
+.dc-body { padding:.2rem 1rem 1rem; }
+.dc-chevron { font-size:16px;color:var(--tx3);transition:transform .25s; }
+.dc-card.open .dc-chevron { transform:rotate(180deg); }
+.dc-badge { background:#e74c3c;color:white;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 5px; }
+
 @media print{
   /* Ocultar TODO menos el recibo */
   body > *:not(#print-portal) { display:none!important; }
@@ -237,23 +246,67 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
     <div class="mt"><div class="mt-l">Vencen en 30d</div><div class="mt-v" id="m-venc" style="color:var(--ambertx)">—</div></div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.9rem">
-    <div class="card">
-      <h3><i class="ti ti-calendar-event" style="color:var(--bluetx)"></i> Contratos próx. vencer</h3>
-      <div id="dash-venc"></div>
+    <div class="card dc-card" id="dc-venc">
+      <div class="dc-hdr" onclick="toggleDC('dc-venc')">
+        <span><i class="ti ti-calendar-event" style="color:var(--bluetx)"></i> Contratos próx. vencer</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="dc-badge" id="dc-venc-badge" style="display:none">0</span>
+          <i class="ti ti-chevron-down dc-chevron"></i>
+        </div>
+      </div>
+      <div class="dc-body" id="dash-venc" style="display:none"></div>
     </div>
-    <div class="card">
-      <h3><i class="ti ti-bolt" style="color:var(--ambertx)"></i> Venc. boletas servicios</h3>
-      <div id="dash-boletas"></div>
+    <div class="card dc-card" id="dc-boletas">
+      <div class="dc-hdr" onclick="toggleDC('dc-boletas')">
+        <span><i class="ti ti-bolt" style="color:var(--ambertx)"></i> Venc. boletas servicios</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="dc-badge" id="dc-boletas-badge" style="display:none">0</span>
+          <i class="ti ti-chevron-down dc-chevron"></i>
+        </div>
+      </div>
+      <div class="dc-body" id="dash-boletas" style="display:none"></div>
     </div>
-    <div class="card">
-      <h3><i class="ti ti-circle-check" style="color:var(--greentx)"></i> Estado pagos del mes</h3>
-      <div id="dash-pagos"></div>
+    <div class="card dc-card" id="dc-pagos">
+      <div class="dc-hdr" onclick="toggleDC('dc-pagos')">
+        <span><i class="ti ti-circle-check" style="color:var(--greentx)"></i> Estado pagos del mes</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="dc-badge" id="dc-pagos-badge" style="display:none">0</span>
+          <i class="ti ti-chevron-down dc-chevron"></i>
+        </div>
+      </div>
+      <div class="dc-body" id="dash-pagos" style="display:none"></div>
     </div>
+  </div>
+  <div class="card dc-card" id="dc-depts">
+    <div class="dc-hdr" onclick="toggleDC('dc-depts')">
+      <span><i class="ti ti-building-skyscraper" style="color:var(--greentx)"></i> Departamentos</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="dc-badge" id="dc-depts-badge" style="display:none">0</span>
+        <i class="ti ti-chevron-down dc-chevron"></i>
+      </div>
+    </div>
+    <div class="dc-body" id="dash-dg" class="dg" style="display:none"></div>
   </div>
   <div class="card">
-    <h3><i class="ti ti-building-skyscraper" style="color:var(--greentx)"></i> Departamentos</h3>
-    <div id="dash-dg" class="dg"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <h3 style="margin:0"><i class="ti ti-link" style="color:var(--bluetx)"></i> Accesos a portales de servicios</h3>
+      <button class="btn sm" onclick="editarAccesos()"><i class="ti ti-edit"></i> Editar</button>
+    </div>
+    <div id="dash-accesos"><div class="ld"><span class="sp"></span>Cargando...</div></div>
   </div>
+</div>
+
+<!-- MODAL ACCESOS -->
+<div class="mo" id="mo-accesos">
+<div class="mbox" style="width:700px">
+  <h2><i class="ti ti-link"></i> Portales de Servicios</h2>
+  <p style="font-size:13px;color:var(--tx2);margin-bottom:1rem">Guardá los links, usuario, contraseña y notas de cada servicio.</p>
+  <div id="accesos-form-rows" style="display:flex;flex-direction:column;gap:10px"></div>
+  <div class="mac">
+    <button class="btn" onclick="cm('mo-accesos')">Cancelar</button>
+    <button class="btn pri" onclick="guardarAccesos()"><i class="ti ti-device-floppy"></i> Guardar</button>
+  </div>
+</div>
 </div>
 
 <!-- DEPARTAMENTOS -->
@@ -2181,7 +2234,9 @@ async function renderDash(){
   });
   // vencimientos contratos
   const dv=document.getElementById('dash-venc');
-  const prox=activos.filter(c=>{const d=dvenc(c.fecha_fin);return d>0&&d<=60;}).slice(0,5);
+  let cntVenc=0, cntBoletas=0, cntPagos=0;
+  const prox=activos.filter(c=>{const d=dvenc(c.fecha_fin);return d>0&&d<=60&&c.fecha_fin!=='2099-12-31';}).slice(0,5);
+  cntVenc=activos.filter(c=>{const d=dvenc(c.fecha_fin);return d>0&&d<=30&&c.fecha_fin!=='2099-12-31';}).length;
   if(!prox.length) dv.innerHTML='<p style="color:var(--tx2);font-size:13px">Sin vencimientos próximos</p>';
   else dv.innerHTML=prox.map(c=>{
     const dept=depts.find(d=>d.id===c.dept_id),inq=inqs.find(i=>i.id===c.inq_id),d=dvenc(c.fecha_fin);
@@ -2190,6 +2245,7 @@ async function renderDash(){
   // vencimientos boletas
   const db=document.getElementById('dash-boletas');
   const prox30=servs.filter(s=>s.fecha_vencimiento&&dvenc(s.fecha_vencimiento)<=30&&dvenc(s.fecha_vencimiento)>-3).sort((a,b)=>dvenc(a.fecha_vencimiento)-dvenc(b.fecha_vencimiento)).slice(0,6);
+  cntBoletas=servs.filter(s=>s.fecha_vencimiento&&dvenc(s.fecha_vencimiento)<=7&&dvenc(s.fecha_vencimiento)>-1).length;
   if(!prox30.length) db.innerHTML='<p style="color:var(--tx2);font-size:13px">Sin boletas próximas a vencer</p>';
   else db.innerHTML=prox30.map(s=>{
     const ic={luz:'⚡',gas:'🔥',agua:'💧'};
@@ -2207,6 +2263,22 @@ async function renderDash(){
   });
   dp.innerHTML=filas.length?filas.join(''):'<p style="color:var(--tx2);font-size:13px">Sin contratos activos</p>';
   // dept grid
+  renderDashAccesos();
+  // Set badges after content is loaded
+  setTimeout(()=>{
+    // Contratos: contar vencimientos próximos (excl. propietarios)
+    setDCBadge('dc-venc', cntVenc);
+    // Boletas: contar las que vencen en 7 días
+    const boletaItems = document.querySelectorAll('#dash-boletas .vb-row');
+    cntBoletas = [...boletaItems].filter(r=>r.querySelector('.bdg.red')).length;
+    setDCBadge('dc-boletas', cntBoletas);
+    // Pagos: contar pendientes
+    const pendItems = document.querySelectorAll('#dash-pagos');
+    const pendText = pendItems[0]?.textContent||'';
+    const pendMatch = pendText.match(/(\d+)\s*pendiente/i);
+    cntPagos = pendMatch ? parseInt(pendMatch[1]) : 0;
+    setDCBadge('dc-pagos', cntPagos);
+  }, 300);
   const dg=document.getElementById('dash-dg');
   dg.innerHTML=depts.length?depts.map(d=>{
     const cont=activos.find(c=>c.dept_id===d.id);
@@ -3124,6 +3196,169 @@ async function guardarBoleta() {
 
 // renderServs alias para compatibilidad (dashboard y otros lo llaman)
 async function renderServs() { return renderDatosServicios(); }
+
+// ════════════════════════════════════════════════════
+//  ACCESOS A PORTALES DE SERVICIOS
+// ════════════════════════════════════════════════════
+
+const ACCESOS_DEFAULT = [
+  { id:'edenor',    label:'⚡ Edenor',        url:'https://www.edenordigital.com/ingreso',                    usuario:'DATOSEIMPUESTOS@GMAIL.COM', clave:'puan5548',  nota:'' },
+  { id:'aysa',      label:'💧 AySA',          url:'https://portal.web.aysa.com.ar/index.html#/facturas',      usuario:'',                          clave:'',          nota:'' },
+  { id:'naturgy',   label:'🔥 Naturgy',       url:'https://ov.naturgy.com.ar/ingreso',                        usuario:'',                          clave:'',          nota:'' },
+  { id:'arba',      label:'📄 ARBA',          url:'https://web.arba.gov.ar/',                                 usuario:'datoseimpuestos@gmail.com', clave:'Puan5548',  nota:'Ingresar a PAGAR (arriba izq.) → SIN FACTURA' },
+  { id:'claro',     label:'🌐 Claro',         url:'https://miclaro.claro.com.ar/j6oOlp4nOtK5zsO1hoIqkw%3D%3D/home', usuario:'',             clave:'',          nota:'⚠️ Pagar antes del vencimiento' },
+  { id:'netflix',   label:'📺 Netflix',       url:'https://www.netflix.com/BillingActivity',                  usuario:'',                          clave:'0103JOSE',  nota:'' },
+  { id:'municipal', label:'🏛️ Municipal TSG', url:'https://portalvecino.tresdefebrero.gov.ar/consulta#',      usuario:'',                          clave:'',          nota:'Tasa por Servicios Generales (TSG) — ⚠️ Pagar antes del vencimiento' },
+];
+
+async function getAccesos() {
+  const key = 'adm_accesos';
+  if (!sb) {
+    const d = lsData(); return d[key] || ACCESOS_DEFAULT;
+  }
+  try {
+    const {data} = await sb.from('configuracion').select('valor').eq('clave', key).single();
+    return data?.valor ? JSON.parse(data.valor) : ACCESOS_DEFAULT;
+  } catch { return ACCESOS_DEFAULT; }
+}
+
+async function saveAccesos(accesos) {
+  const key = 'adm_accesos';
+  if (!sb) { const d=lsData(); d[key]=accesos; lsSave(d); return; }
+  await sb.from('configuracion').upsert({ clave: key, valor: JSON.stringify(accesos) });
+}
+
+async function renderDashAccesos() {
+  const el = document.getElementById('dash-accesos');
+  if (!el) return;
+  const accesos = await getAccesos();
+  let h = `<div style="overflow-x:auto"><table style="min-width:600px;font-size:13px">
+    <thead><tr>
+      <th style="width:120px">Servicio</th>
+      <th>Link</th>
+      <th style="width:180px">Usuario</th>
+      <th style="width:120px">Contraseña</th>
+      <th>Notas / Aclaraciones</th>
+    </tr></thead><tbody>`;
+  accesos.forEach(a => {
+    h += `<tr>
+      <td><strong>${a.label}</strong></td>
+      <td><a href="${a.url}" target="_blank" style="color:var(--acc);text-decoration:none;display:flex;align-items:center;gap:4px">
+        <i class="ti ti-external-link" style="font-size:12px"></i> Abrir portal
+      </a></td>
+      <td style="font-size:12px;color:var(--tx2)">${a.usuario||'—'}</td>
+      <td>
+        <span class="clave-mask" data-val="${a.clave||''}" onclick="toggleClave(this)" style="cursor:pointer;font-size:12px;letter-spacing:2px;color:var(--tx2)" title="Click para ver/ocultar">
+          ${a.clave ? '••••••••' : '—'}
+        </span>
+      </td>
+      <td style="font-size:12px;color:var(--tx2)">${a.nota||'—'}</td>
+    </tr>`;
+  });
+  h += '</tbody></table></div>';
+  el.innerHTML = h;
+}
+
+function toggleClave(el) {
+  const val = el.dataset.val;
+  if (!val) return;
+  if (el.textContent.includes('•')) {
+    el.textContent = val;
+    el.style.letterSpacing = 'normal';
+    el.style.color = 'var(--tx1)';
+  } else {
+    el.textContent = '••••••••';
+    el.style.letterSpacing = '2px';
+    el.style.color = 'var(--tx2)';
+  }
+}
+
+async function editarAccesos() {
+  const accesos = await getAccesos();
+  const rows = document.getElementById('accesos-form-rows');
+  rows.innerHTML = '';
+  accesos.forEach((a, i) => {
+    rows.innerHTML += `
+    <div style="background:var(--bg2);border-radius:var(--r);padding:10px 14px">
+      <div style="font-weight:600;margin-bottom:8px">${a.label}</div>
+      <div class="fg3">
+        <div class="fg" style="margin:0">
+          <label style="font-size:11px">URL</label>
+          <input id="ac-url-${i}" type="text" value="${a.url||''}" style="font-size:12px">
+        </div>
+        <div class="fg" style="margin:0">
+          <label style="font-size:11px">Usuario / Email</label>
+          <input id="ac-usr-${i}" type="text" value="${a.usuario||''}" style="font-size:12px">
+        </div>
+        <div class="fg" style="margin:0">
+          <label style="font-size:11px">Contraseña</label>
+          <input id="ac-clave-${i}" type="text" value="${a.clave||''}" style="font-size:12px">
+        </div>
+      </div>
+      <div class="fg" style="margin:6px 0 0">
+        <label style="font-size:11px">Notas / Aclaraciones</label>
+        <input id="ac-nota-${i}" type="text" value="${a.nota||''}" style="font-size:12px" placeholder="Ej: Pagar antes del vencimiento, acceder desde sección X...">
+      </div>
+    </div>`;
+  });
+  // Store count for guardar
+  rows.dataset.count = accesos.length;
+  rows.dataset.ids = JSON.stringify(accesos.map(a=>a.id));
+  rows.dataset.labels = JSON.stringify(accesos.map(a=>a.label));
+  om('mo-accesos');
+}
+
+async function guardarAccesos() {
+  const rows = document.getElementById('accesos-form-rows');
+  const n = parseInt(rows.dataset.count||0);
+  const ids = JSON.parse(rows.dataset.ids||'[]');
+  const labels = JSON.parse(rows.dataset.labels||'[]');
+  const accesos = [];
+  for (let i = 0; i < n; i++) {
+    accesos.push({
+      id: ids[i],
+      label: labels[i],
+      url: document.getElementById('ac-url-'+i)?.value||'',
+      usuario: document.getElementById('ac-usr-'+i)?.value||'',
+      clave: document.getElementById('ac-clave-'+i)?.value||'',
+      nota: document.getElementById('ac-nota-'+i)?.value||'',
+    });
+  }
+  await saveAccesos(accesos);
+  cm('mo-accesos');
+  renderDashAccesos();
+}
+
+
+// ════════════════════════════════════════════════════
+//  COLLAPSIBLE DASHBOARD CARDS
+// ════════════════════════════════════════════════════
+function toggleDC(id) {
+  const card = document.getElementById(id);
+  const body = card.querySelector('.dc-body');
+  const isOpen = card.classList.contains('open');
+  card.classList.toggle('open', !isOpen);
+  body.style.display = isOpen ? 'none' : '';
+}
+
+function setDCBadge(id, count) {
+  const badge = document.getElementById(id + '-badge');
+  if (!badge) return;
+  if (count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'flex';
+    // auto-open if there are novedades
+    const card = document.getElementById(id);
+    if (card && !card.classList.contains('open')) {
+      card.classList.add('open');
+      const body = card.querySelector('.dc-body');
+      if (body) body.style.display = '';
+    }
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
 </script>
 </body>
 </html>
