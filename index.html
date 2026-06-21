@@ -574,15 +574,22 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
           <option value="edenor1">⚡ Edenor 1 (Cta.4855)</option>
           <option value="edenor2">⚡ Edenor 2 (Cta.6959)</option>
           <option value="edenor3">⚡ Edenor 3 (Cta.7966)</option>
+          <option value="luz">⚡ Luz (genérico)</option>
           <option value="aysa1">💧 AySA 1 (Cta.948)</option>
           <option value="aysa2">💧 AySA 2 (Cta.951)</option>
+          <option value="agua">💧 Agua (genérico)</option>
           <option value="gas1">🔥 Gas 1 - Naturgy (Cta.355/7)</option>
           <option value="gas2">🔥 Gas 2 - Naturgy (Cta.354/5)</option>
+          <option value="gas">🔥 Gas (genérico)</option>
+          <option value="bomba">💡 Bomba de agua</option>
           <option value="claro">🌐 Claro Internet</option>
+          <option value="internet">🌐 Internet (genérico)</option>
           <option value="netflix">📺 Netflix</option>
+          <option value="streaming">📺 Streaming (genérico)</option>
           <option value="muni1">🏛️ ARBA (Cta.430459/5)</option>
           <option value="muni2">🏛️ Muni Terreno (Cta.430458)</option>
           <option value="arba">📄 ARBA</option>
+          <option value="municipal">🏙️ Municipal (genérico)</option>
         </select>
       </div>
       <div class="fg" style="margin:0;min-width:120px">
@@ -2316,7 +2323,14 @@ const HIST_LABELS = {
   netflix:'📺 Netflix',
   muni1:'🏛️ ARBA (430459/5)',
   muni2:'🏛️ Muni Terreno (430458)',
-  arba:'📄 ARBA'
+  arba:'📄 ARBA',
+  luz:'⚡ Luz',
+  gas:'🔥 Gas',
+  agua:'💧 Agua',
+  bomba:'💡 Bomba de agua',
+  municipal:'🏙️ Municipal',
+  internet:'🌐 Internet',
+  streaming:'📺 Streaming'
 };
 
 const HIST_INQUILINOS = {
@@ -2456,7 +2470,7 @@ async function renderHistorial() {
     // Otros servicios no categorizados
     const otros = all.filter(x=>!HIST_LABELS[x.servicio]);
     if (otros.length) {
-      html += `<div class="stl" style="margin-top:1rem">Otros</div>`;
+      html += `<div class="stl" style="margin-top:1rem">⚠️ Otros (servicio no reconocido: ${[...new Set(otros.map(x=>x.servicio))].join(', ')})</div>`;
       html += buildHistTable(otros, estadoBadge);
     }
   }
@@ -3180,12 +3194,33 @@ async function guardarBoleta() {
   const hoy = new Date().toISOString().slice(0,10);
   const histEntry = {
     id: uid(),
-    servicio: tipo,
+    servicio: (() => {
+      // Buscar la clave correcta del historial por número de cuenta
+      const cuenta = _cbServicio?.cuenta || '';
+      const cuentaMap = {
+        '4855':'edenor1', '5362664855':'edenor1',
+        '6959':'edenor2', '2301716959':'edenor2',
+        '7966':'edenor3', '8397487966':'edenor3',
+        '948':'aysa1',  '1718948':'aysa1',
+        '951':'aysa2',  '1718951':'aysa2',
+        '355/7':'gas1', '222355/7':'gas1',
+        '354/5':'gas2', '222354/5':'gas2',
+        '21264378892':'claro',
+        '430459/5':'muni1',
+        '430458/1':'muni2', '430458':'muni2',
+      };
+      // Buscar por coincidencia parcial
+      for (const [k, v] of Object.entries(cuentaMap)) {
+        if (cuenta.includes(k) || k.includes(cuenta)) return v;
+      }
+      // Si no matchea usar tipo
+      return tipo;
+    })(),
     vto_cobro: document.getElementById('cb-venc').value || hoy,
     vto_real: document.getElementById('cb-venc').value || null,
     monto: total,
     periodo_fact: document.getElementById('cb-periodo-fact').value || document.getElementById('cb-periodo').value || null,
-    estado: 'pagada',
+    estado: 'pendiente',
     detalle: document.getElementById('cb-detalle').value || null,
     pagador: document.getElementById('cb-pagador').value || null,
     fecha_carga: hoy
