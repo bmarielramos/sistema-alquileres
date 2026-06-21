@@ -494,6 +494,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
     <!-- Paso 3: distribución -->
     <div id="cb-blk-distribucion" style="display:none">
       <div class="stl">Paso 3 — Distribución entre inquilinos</div>
+      <div id="cb-unico-msg" style="display:none;padding:12px 14px;background:var(--bg2);border-radius:var(--r);font-size:13px;color:var(--tx2);margin-bottom:1rem"></div>
 
       <!-- LUZ: por kWh -->
       <div id="cb-blk-luz" style="display:none">
@@ -2380,14 +2381,24 @@ const HIST_INQUILINOS = {
 };
 
 async function getHistorial() {
-  if (!sb) return lsGet('historial');
-  const {data} = await sb.from('historial_boletas').select('*').order('vto_cobro',{ascending:false});
-  return data || lsGet('historial');
+  const local = lsGet('historial');
+  if (!sb) return local;
+  const {data, error} = await sb.from('historial_boletas').select('*').order('vto_cobro',{ascending:false});
+  if (error) { console.error('getHistorial error:', error.message); return local; }
+  // Merge: supabase data + any local items not yet synced
+  const sbIds = new Set((data||[]).map(x=>x.id));
+  const localOnly = local.filter(x=>!sbIds.has(x.id));
+  return [...(data||[]), ...localOnly];
 }
 
 async function saveHistorial(h) {
   if (!sb) { lsUpsert('historial', h); return; }
-  await sb.from('historial_boletas').upsert(h);
+  const {error} = await sb.from('historial_boletas').upsert(h);
+  if (error) {
+    console.error('saveHistorial error:', error.message, JSON.stringify(h));
+    // fallback to localStorage
+    lsUpsert('historial', h);
+  }
 }
 
 async function delHistorial(id) {
@@ -3044,7 +3055,8 @@ async function cargarInfoCuenta() {
     ${ds.notas?`<br><span style="color:var(--tx3);font-size:11px">📝 ${ds.notas}</span>`:''}
   `;
   infoEl.style.display = 'block';
-  // Si hay un monto cargado, construir distribución
+  // Mostrar distribución siempre que se seleccione una cuenta
+  document.getElementById('cb-blk-distribucion').style.display = '';
   buildCBDistribucion();
 }
 
@@ -3056,25 +3068,23 @@ async function buildCBDistribucion() {
   const tipo = _cbServicio.tipo;
   const distrib = _cbServicio.distrib;
 
-  // PAGO ÚNICO — no se divide, no mostrar distribución
+  // PAGO ÚNICO — ocultar ambos bloques y mostrar mensaje
+  const unicoMsg = document.getElementById('cb-unico-msg');
   if (distrib === 'unico') {
     blk.style.display = '';
     blkLuz.style.display = 'none';
     blkPct.style.display = 'none';
-    blk.innerHTML = `<div style="padding:12px 14px;background:var(--bg2);border-radius:var(--r);font-size:13px;color:var(--tx2)">
-      <i class="ti ti-circle-check" style="color:var(--greentx)"></i>
-      <strong>Pago único</strong> — Este servicio lo paga completo
-      ${_cbDepts.map(d=>'<span class="bdg gray" style="margin-left:4px">Depto '+d.num+'</span>').join('')}.
-      No se divide entre inquilinos.
-    </div>`;
+    if (unicoMsg) {
+      unicoMsg.style.display = '';
+      unicoMsg.innerHTML = `<i class="ti ti-circle-check" style="color:var(--greentx)"></i>
+        <strong>Pago único</strong> — Este servicio lo paga completo
+        ${_cbDepts.map(d=>'<span class="bdg gray" style="margin-left:4px">Depto '+d.num+'</span>').join('')}.
+        No se divide entre inquilinos.`;
+    }
     return;
   }
-
-  blk.style.display = '';
-  // Restaurar contenido original del bloque si fue reemplazado por mensaje de pago único
-  if (!document.getElementById('cb-blk-luz')) {
-    // reconstruir estructura — no debería pasar pero por seguridad
-  }
+  // Ocultar mensaje de pago único si no aplica
+  if (unicoMsg) unicoMsg.style.display = 'none';
   if (tipo === 'luz' || distrib === 'medidor') {
     blkLuz.style.display = '';
     blkPct.style.display = 'none';
@@ -3276,11 +3286,12 @@ async function guardarBoleta() {
     pagador: document.getElementById('cb-pagador').value || null,
     fecha_carga: hoy
   };
-  const {error: hErr} = await sb
-    ? sb.from('historial_boletas').upsert(histEntry)
-    : { error: null };
-  if (!sb) lsUpsert('historial', histEntry);
-  if (hErr) console.error('Error guardando en historial:', hErr.message);
+  if (sb) {
+    const {error: hErr} = await sb.from('historial_boletas').upsert(histEntry);
+    if (hErr) console.error('Error guardando en historial:', hErr.message);
+  } else {
+    lsUpsert('historial', histEntry);
+  }
   alert('✅ Boleta guardada y registrada en Historial');
   // Recalcular cobros si está visible
   if (document.getElementById('page-cobros')?.classList.contains('active')) renderCobros();
@@ -3306,19 +3317,34 @@ const ACCESOS_DEFAULT = [
 
 async function getAccesos() {
   const key = 'adm_accesos';
-  if (!sb) {
-    const d = lsData(); return d[key] || ACCESOS_DEFAULT;
+  // Siempre usar localStorage como fuente principal para configuración
+  const d = lsData();
+  if (d[key]) return d[key];
+  // Si hay supabase, intentar traer de allí
+  if (sb) {
+    try {
+      const {data, error} = await sb.from('configuracion').select('valor').eq('clave', key).maybeSingle();
+      if (!error && data?.valor) {
+        const parsed = JSON.parse(data.valor);
+        // Guardar en localStorage para próximas veces
+        d[key] = parsed; lsSave(d);
+        return parsed;
+      }
+    } catch(e) { /* tabla no existe, usar default */ }
   }
-  try {
-    const {data} = await sb.from('configuracion').select('valor').eq('clave', key).single();
-    return data?.valor ? JSON.parse(data.valor) : ACCESOS_DEFAULT;
-  } catch { return ACCESOS_DEFAULT; }
+  return ACCESOS_DEFAULT;
 }
 
 async function saveAccesos(accesos) {
   const key = 'adm_accesos';
-  if (!sb) { const d=lsData(); d[key]=accesos; lsSave(d); return; }
-  await sb.from('configuracion').upsert({ clave: key, valor: JSON.stringify(accesos) });
+  // Guardar en localStorage siempre
+  const d = lsData(); d[key] = accesos; lsSave(d);
+  // Intentar también en supabase si está disponible
+  if (sb) {
+    try {
+      await sb.from('configuracion').upsert({ clave: key, valor: JSON.stringify(accesos) });
+    } catch(e) { /* ignorar si tabla no existe */ }
+  }
 }
 
 async function renderDashAccesos() {
