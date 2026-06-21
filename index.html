@@ -1478,7 +1478,7 @@ async function guardarCont(){
   const clausulas = document.getElementById('c-claus').value;
   const c={
     id, dept_id, inq_id, rol,
-    fecha_inicio: fecha_inicio||null,
+    fecha_inicio: fecha_inicio || new Date().toISOString().slice(0,10),
     fecha_fin: fecha_fin||null,
     monto: esProp?0:monto,
     deposito: esProp?0:(parseFloat(document.getElementById('c-dep').value)||0),
