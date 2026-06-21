@@ -3177,19 +3177,24 @@ async function guardarBoleta() {
   };
   await saveServ(serv);
   // También guardar en historial automáticamente
+  const hoy = new Date().toISOString().slice(0,10);
   const histEntry = {
     id: uid(),
     servicio: tipo,
-    vto_cobro: null,
-    vto_real: document.getElementById('cb-venc').value||null,
+    vto_cobro: document.getElementById('cb-venc').value || hoy,
+    vto_real: document.getElementById('cb-venc').value || null,
     monto: total,
-    periodo_fact: document.getElementById('cb-periodo-fact').value||null,
+    periodo_fact: document.getElementById('cb-periodo-fact').value || document.getElementById('cb-periodo').value || null,
     estado: 'pagada',
-    detalle: document.getElementById('cb-detalle').value||null,
-    pagador: document.getElementById('cb-pagador').value||null,
-    fecha_carga: new Date().toISOString().slice(0,10)
+    detalle: document.getElementById('cb-detalle').value || null,
+    pagador: document.getElementById('cb-pagador').value || null,
+    fecha_carga: hoy
   };
-  await saveHistorial(histEntry);
+  const {error: hErr} = await sb
+    ? sb.from('historial_boletas').upsert(histEntry)
+    : { error: null };
+  if (!sb) lsUpsert('historial', histEntry);
+  if (hErr) console.error('Error guardando en historial:', hErr.message);
   alert('✅ Boleta guardada y registrada en Historial');
   renderCargarBoleta();
 }
