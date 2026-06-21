@@ -216,10 +216,6 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
     <div class="ni" onclick="showPage('pagos',this)"><i class="ti ti-circle-check"></i> <span class="nav-txt">Pagos</span></div>
     <div class="ni" onclick="showPage('mantenimiento',this)"><i class="ti ti-tools"></i> <span class="nav-txt">Manten.</span></div>
   </div>
-  <div class="ns">
-    <div class="nl">Sistema</div>
-    <div class="ni" onclick="pedirClave(this)"><i class="ti ti-settings"></i> <span class="nav-txt">Config. 🔒</span></div>
-  </div>
   <div class="conn-dot" id="conn-status">⚪ Sin conexión Supabase</div>
 </aside>
 
@@ -446,11 +442,28 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
 
       <!-- LUZ: por kWh -->
       <div id="cb-blk-luz" style="display:none">
-        <p style="font-size:12px;color:var(--tx2);margin-bottom:8px">Ingresá los kWh leídos en cada medidor. El monto se calcula automáticamente.</p>
+        <!-- kWh totales de la boleta -->
+        <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:1rem;padding:10px 14px;background:var(--bg2);border-radius:var(--r)">
+          <div class="fg" style="margin:0;max-width:180px">
+            <label>kWh totales de la boleta *</label>
+            <input id="cb-kwh-total" type="number" placeholder="Ej: 1058" min="0" oninput="recalcCB()" style="font-weight:600">
+          </div>
+          <div style="font-size:12px;color:var(--tx2);padding-bottom:8px">
+            Precio por kWh: <strong id="cb-precio-kw">—</strong>
+          </div>
+          <div style="font-size:12px;color:var(--tx2);padding-bottom:8px">
+            kWh deptos: <strong id="cb-kw-deptos-suma">0</strong>
+          </div>
+          <div style="font-size:12px;color:var(--tx2);padding-bottom:8px">
+            kWh bomba (restante): <strong id="cb-kw-bomba-calc" style="color:var(--acc)">0</strong>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--tx2);margin-bottom:8px">Ingresá los kWh leídos en el medidor de cada departamento:</p>
         <div id="cb-dist-luz"></div>
         <div class="stl" style="margin-top:1rem">Bomba de agua (compartida)</div>
+        <p style="font-size:12px;color:var(--tx2);margin-bottom:8px">Los kWh de la bomba se calculan automáticamente (kWh totales − kWh deptos). Elegí qué deptos la comparten:</p>
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
-          <div class="fg" style="width:160px;margin:0"><label>kWh bomba</label><input id="cb-bomba-kw" type="number" placeholder="0" min="0" oninput="recalcCB()"></div>
+          <div class="fg" style="width:160px;margin:0"><label>kWh bomba (auto)</label><input id="cb-bomba-kw" type="number" placeholder="0" min="0" oninput="recalcCB()" style="background:var(--bg2)"></div>
           <div class="fg" style="width:160px;margin:0"><label>Monto bomba ($)</label><input id="cb-bomba-monto" type="text" readonly placeholder="automático"></div>
         </div>
         <div id="cb-bomba-depts" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
@@ -669,28 +682,6 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
   </div>
 </div>
 
-<!-- CONFIGURACIÓN -->
-<div id="page-configuracion" class="page">
-  <div class="ph"><div><h1>Configuración</h1><p>Datos del edificio y Supabase</p></div></div>
-  <div class="card">
-    <h3><i class="ti ti-database" style="color:var(--greentx)"></i> Conexión Supabase</h3>
-    <div class="al suc" style="margin-bottom:.9rem"><i class="ti ti-circle-check"></i> <strong>Conexión integrada y activa.</strong> Esta app ya está conectada permanentemente a tu base de datos Supabase.</div>
-    <div style="display:flex;gap:7px">
-      <button class="btn" onclick="testConn()"><i class="ti ti-wifi"></i> Probar conexión</button>
-    </div>
-    <div id="conn-res" style="margin-top:8px"></div>
-  </div>
-  <div class="card">
-    <h3><i class="ti ti-building"></i> Datos del edificio</h3>
-    <div class="fg2">
-      <div class="fg"><label>Nombre</label><input id="cfg-nombre" type="text" placeholder="Edificio Los Alamos"></div>
-      <div class="fg"><label>Dirección</label><input id="cfg-dir" type="text" placeholder="Av. Corrientes 1234, CABA"></div>
-      <div class="fg"><label>CUIT</label><input id="cfg-cuit" type="text" placeholder="20-12345678-9"></div>
-      <div class="fg"><label>Teléfono</label><input id="cfg-tel" type="text" placeholder="+54 11 1234-5678"></div>
-    </div>
-    <button class="btn pri" style="margin-top:6px" onclick="guardarCfg()"><i class="ti ti-check"></i> Guardar</button>
-  </div>
-</div>
 </main>
 </div>
 
@@ -1000,23 +991,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
 </div>
 </div>
 
-<!-- ===== MODAL CONTRASEÑA ===== -->
-<div class="mo" id="mo-clave">
-<div class="mbox" style="max-width:360px;text-align:center">
-  <div style="width:48px;height:48px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .9rem">
-    <i class="ti ti-lock" style="font-size:22px;color:var(--bluetx)"></i>
-  </div>
-  <h2 style="justify-content:center;margin-bottom:.4rem">Área protegida</h2>
-  <p style="font-size:13px;color:var(--tx2);margin-bottom:1rem">Ingresá la contraseña de administración para acceder a Configuración.</p>
-  <input id="clave-input" type="password" placeholder="Contraseña" style="text-align:center;font-size:15px;letter-spacing:2px" autocomplete="off">
-  <p id="clave-err" style="color:var(--redtx);font-size:12px;margin-top:6px;min-height:18px"></p>
-  <div style="display:flex;gap:8px;margin-top:.75rem">
-    <button class="btn" style="flex:1" onclick="cm('mo-clave')">Cancelar</button>
-    <button class="btn pri" style="flex:1" onclick="verificarClave()"><i class="ti ti-lock-open"></i> Entrar</button>
-  </div>
-  <p style="font-size:11px;color:var(--tx3);margin-top:.75rem">La sesión se cierra automáticamente en 10 minutos.</p>
-</div>
-</div>
+
 
 <script>
 // ─── Supabase & storage ─────────────────────────────────
@@ -1054,48 +1029,7 @@ function showCR(msg, type) {
   el.innerHTML = `<div class="al ${type}">${msg}</div>`;
   setTimeout(() => el.innerHTML='', 5000);
 }
-async function guardarCfg() {
-  const n={...gc(), nombre:document.getElementById('cfg-nombre').value, dir:document.getElementById('cfg-dir').value, cuit:document.getElementById('cfg-cuit').value, tel:document.getElementById('cfg-tel').value};
-  sc(n);
-  if (sb) await sb.from('configuracion').upsert({id:1, nombre:n.nombre, direccion:n.dir, cuit:n.cuit, telefono:n.tel});
-  alert('Guardado ✓');
-}
 
-// ─── Helpers ────────────────────────────────────────────
-const uid = () => Date.now()+'_'+Math.random().toString(36).slice(2,6);
-const fmt = n => '$'+Number(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
-const fmtD = d => { if(!d) return '—'; const p=d.slice(0,10).split('-'); return `${p[2]}/${p[1]}/${p[0]}`; };
-const dvenc = fin => { if(!fin) return 9999; return Math.ceil((new Date(fin)-new Date())/86400000); };
-const mesActual = () => new Date().toISOString().slice(0,7);
-
-// localStorage fallback
-function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)||'[]'); } catch { return []; } }
-function lsSave(k,v) { localStorage.setItem(k, JSON.stringify(v)); }
-function lsUpsert(k,item) { let a=lsGet(k); const i=a.findIndex(x=>x.id===item.id); if(i>=0) a[i]=item; else a.push(item); lsSave(k,a); }
-function lsDel(k,id) { lsSave(k, lsGet(k).filter(x=>x.id!==id)); }
-
-// ─── Nav ────────────────────────────────────────────────
-function showPage(id, el) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+id)?.classList.add('active');
-  if (el) el.classList.add('active');
-  const fn = { dashboard:renderDash, departamentos:renderDepts, inquilinos:renderInqs, contratos:renderConts, 'datos-servicios':renderDatosServicios, 'cargar-boleta':renderCargarBoleta, historial:renderHistorial, cobros:renderCobros, pagos:()=>{ document.getElementById('pagos-periodo').value=mesActual(); renderPagos(); }, mantenimiento:renderMantPend };
-  fn[id]?.();
-}
-function om(id) { document.getElementById(id).classList.add('open'); }
-function cm(id) { document.getElementById(id).classList.remove('open'); }
-function switchTab(prefix, tab, el) {
-  document.querySelectorAll(`#${prefix}-todos, #${prefix}-por-dept`).forEach(t => t.classList.remove('active'));
-  document.querySelectorAll(`.tab`).forEach(t => t.classList.remove('active'));
-  document.getElementById(`${prefix}-${tab}`)?.classList.add('active');
-  if (el) el.classList.add('active');
-  if (tab==='por-dept') { fillDeptSelect('mant-filter-dept', true); document.getElementById('tbl-mant-dept').innerHTML='<p style="color:var(--tx2);font-size:13px">Seleccioná un departamento.</p>'; }
-  else if (tab==='pendientes') renderMantPend();
-  else renderMantAll();
-}
-
-// ─── Data fetchers ───────────────────────────────────────
 async function getDepts() {
   if (!sb) return lsGet('depts');
   const {data} = await sb.from('departamentos').select('*').order('num');
@@ -2185,39 +2119,7 @@ async function renderDash(){
   }).join(''):'<p style="color:var(--tx2);font-size:13px">Sin departamentos registrados</p>';
 }
 
-// ─── Protección de Configuración ────────────────────────
-// Para cambiar la contraseña, modificá la línea de abajo:
-const ADMIN_PASS = 'Puan5548';
-let _cfgUnlocked = false;
 
-function pedirClave(el) {
-  if (_cfgUnlocked) { showPage('configuracion', el); return; }
-  document.getElementById('mo-clave').classList.add('open');
-  document.getElementById('clave-input').value='';
-  document.getElementById('clave-err').textContent='';
-  // guardamos ref al nav item para activarlo después
-  document.getElementById('mo-clave').dataset.navEl = '';
-  _pendingNavEl = el;
-  setTimeout(()=>document.getElementById('clave-input').focus(), 100);
-}
-let _pendingNavEl = null;
-function verificarClave() {
-  const v = document.getElementById('clave-input').value;
-  if (v === ADMIN_PASS) {
-    _cfgUnlocked = true;
-    document.getElementById('mo-clave').classList.remove('open');
-    showPage('configuracion', _pendingNavEl);
-    // auto-lock después de 10 minutos
-    setTimeout(()=>{ _cfgUnlocked=false; }, 10*60*1000);
-  } else {
-    document.getElementById('clave-err').textContent = 'Contraseña incorrecta';
-    document.getElementById('clave-input').value='';
-    document.getElementById('clave-input').focus();
-  }
-}
-document.addEventListener('keydown', e => {
-  if (e.key==='Enter' && document.getElementById('mo-clave').classList.contains('open')) verificarClave();
-});
 
 // ─── Init ────────────────────────────────────────────────
 initSB();
@@ -2868,6 +2770,7 @@ let _cbDepts = [];      // deptos del servicio
 async function renderCargarBoleta() {
   document.getElementById('cb-periodo').value = mesActual();
   document.getElementById('cb-total').value = '';
+  const kwhTotalEl = document.getElementById('cb-kwh-total'); if(kwhTotalEl) kwhTotalEl.value = '';
   document.getElementById('cb-venc').value = '';
   document.getElementById('cb-periodo-fact').value = '';
   document.getElementById('cb-detalle').value = '';
@@ -2983,10 +2886,24 @@ function recalcCB() {
   const tipo = _cbServicio.tipo;
   const distrib = _cbServicio.distrib;
   if (tipo === 'luz' || distrib === 'medidor') {
-    let totalKw = 0;
-    _cbDepts.forEach(d => { totalKw += parseFloat(document.getElementById('cb-kw-'+d.id)?.value||0); });
-    const bombaKw = parseFloat(document.getElementById('cb-bomba-kw')?.value||0);
-    const pxkw = (totalKw + bombaKw) > 0 ? total / (totalKw + bombaKw) : 0;
+    const kwhTotalBoleta = parseFloat(document.getElementById('cb-kwh-total')?.value||0);
+    // Sumar kWh de los deptos
+    let kwDeptos = 0;
+    _cbDepts.forEach(d => { kwDeptos += parseFloat(document.getElementById('cb-kw-'+d.id)?.value||0); });
+    // kWh bomba = total boleta - deptos (auto-calculado)
+    const kwBombaAuto = Math.max(0, kwhTotalBoleta - kwDeptos);
+    const bombaKwEl = document.getElementById('cb-bomba-kw');
+    if (bombaKwEl && kwhTotalBoleta > 0) bombaKwEl.value = kwBombaAuto;
+    const bombaKw = kwhTotalBoleta > 0 ? kwBombaAuto : parseFloat(bombaKwEl?.value||0);
+    // precio por kWh = monto total / kWh totales de la boleta
+    const pxkw = kwhTotalBoleta > 0 ? total / kwhTotalBoleta : (kwDeptos + bombaKw > 0 ? total / (kwDeptos + bombaKw) : 0);
+    // Actualizar indicadores
+    const precioEl = document.getElementById('cb-precio-kw');
+    if (precioEl) precioEl.textContent = pxkw > 0 ? fmt(pxkw) + '/kWh' : '—';
+    const sumaEl = document.getElementById('cb-kw-deptos-suma');
+    if (sumaEl) sumaEl.textContent = kwDeptos;
+    const bombaCalcEl = document.getElementById('cb-kw-bomba-calc');
+    if (bombaCalcEl) { bombaCalcEl.textContent = kwBombaAuto; bombaCalcEl.style.color = kwhTotalBoleta > 0 ? 'var(--acc)' : 'var(--tx3)'; }
     const bombaM = bombaKw * pxkw;
     const sel = _cbDepts.filter(d => document.getElementById('cb-bomba-'+d.id)?.checked);
     const bombaPerDept = sel.length > 0 ? bombaM / sel.length : 0;
@@ -3029,6 +2946,7 @@ async function guardarBoleta() {
   if (!tipo || !cuentaId || !periodo || !total) { alert('Completá tipo, cuenta, período y monto'); return; }
   const distrib = _cbServicio?.distrib||'partes-iguales';
   const distribucion = {};
+  const kwhTotalBoleta = parseFloat(document.getElementById('cb-kwh-total')?.value||0);
   let numero_boleta = _cbServicio?.cuenta||null;
   if (tipo === 'luz' || distrib === 'medidor') {
     const bombaKw = parseFloat(document.getElementById('cb-bomba-kw')?.value||0);
