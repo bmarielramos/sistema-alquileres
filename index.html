@@ -2749,7 +2749,8 @@ async function abrirDatoServ(item=null) {
   chk.innerHTML = '';
   depts.forEach(d => {
     const checked = item?.dept_ids?.includes(d.id) ? 'checked' : '';
-    chk.innerHTML += `<label style="display:flex;align-items:center;gap:4px;font-size:13px;background:var(--bg3);padding:4px 8px;border-radius:20px;cursor:pointer">
+    const isInList = item?.dept_ids?.includes(d.id);
+    chk.innerHTML += `<label style="display:flex;align-items:center;gap:4px;font-size:13px;background:${isInList?'var(--acc-light,#fde8cc)':'var(--bg3)'};padding:4px 8px;border-radius:20px;cursor:pointer;border:1px solid ${isInList?'var(--acc)':'transparent'}">
       <input type="checkbox" value="${d.id}" ${checked} onchange="onDsDistrib()"> Depto ${d.num}
     </label>`;
   });
