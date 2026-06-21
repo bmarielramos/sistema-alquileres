@@ -1479,7 +1479,7 @@ async function guardarCont(){
   const c={
     id, dept_id, inq_id, rol,
     fecha_inicio: fecha_inicio || new Date().toISOString().slice(0,10),
-    fecha_fin: fecha_fin||null,
+    fecha_fin: fecha_fin || (esProp ? '2099-12-31' : fecha_inicio || new Date().toISOString().slice(0,10)),
     monto: esProp?0:monto,
     deposito: esProp?0:(parseFloat(document.getElementById('c-dep').value)||0),
     pct_aumento: esProp?0:(parseFloat(document.getElementById('c-aum').value)||0),
