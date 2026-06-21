@@ -1859,7 +1859,7 @@ async function renderServs(){
     <td style="white-space:nowrap">
       <button class="btn sm" onclick="verDetServ('${s.id}')"><i class="ti ti-eye"></i></button>
       <button class="btn sm pri" style="margin-left:3px" onclick="editServ('${s.id}')"><i class="ti ti-edit"></i></button>
-      <button class="btn sm dan" style="margin-left:3px" onclick="if(confirm('¿Eliminar?'))delItem('servicios','servs','${s.id}').then(()=>{renderServs();if(sb)sb.from('historial_boletas').delete().eq('id','${s.id}_h').then(()=>{});if(document.getElementById('page-cobros')?.classList.contains('active'))renderCobros();})"><i class="ti ti-trash"></i></button>
+      <button class="btn sm dan" style="margin-left:3px" onclick="if(confirm('¿Eliminar?'))delItem('servicios','servs','${s.id}').then(()=>{renderServs();renderDash();if(sb)sb.from('historial_boletas').delete().eq('id','${s.id}_h').then(()=>{});if(document.getElementById('page-cobros')?.classList.contains('active'))renderCobros();})"><i class="ti ti-trash"></i></button>
     </td></tr>`;
   });
   el.innerHTML=h+'</tbody></table>';
