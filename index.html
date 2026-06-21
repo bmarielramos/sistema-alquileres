@@ -2931,7 +2931,7 @@ async function cargarInfoCuenta() {
   buildCBDistribucion();
 }
 
-function buildCBDistribucion() {
+async function buildCBDistribucion() {
   if (!_cbServicio || !_cbDepts.length) return;
   const blk = document.getElementById('cb-blk-distribucion');
   const blkLuz = document.getElementById('cb-blk-luz');
@@ -2952,14 +2952,23 @@ function buildCBDistribucion() {
       </div>`;
     });
     document.getElementById('cb-dist-luz').innerHTML = h;
-    // Bomba depts checkboxes
+    // Bomba depts checkboxes — buscar el servicio de bomba para obtener SUS deptos
+    const allDS = await getDatosServs();
+    const allDepts = await getDepts();
+    const bombaSvc = allDS.find(ds => ds.tipo === 'bomba');
+    // Deptos de la bomba: si hay servicio de bomba configurado, usar esos; si no, usar los de la luz
+    const bombaDepts = bombaSvc
+      ? (bombaSvc.dept_ids||[]).map(did => allDepts.find(d=>d.id===did)).filter(Boolean)
+      : _cbDepts;
     let hb = '';
-    _cbDepts.forEach(d => {
+    bombaDepts.forEach(d => {
       hb += `<label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--bg2);padding:4px 8px;border-radius:20px;cursor:pointer">
         <input type="checkbox" id="cb-bomba-${d.id}" onchange="recalcCB()"> Depto ${d.num}
       </label>`;
     });
     document.getElementById('cb-bomba-depts').innerHTML = hb;
+    // Guardar referencia a los deptos de bomba para el recalculo
+    window._cbBombaDepts = bombaDepts;
   } else {
     blkLuz.style.display = 'none';
     blkPct.style.display = '';
@@ -3016,7 +3025,8 @@ function recalcCB() {
     const bombaCalcEl = document.getElementById('cb-kw-bomba-calc');
     if (bombaCalcEl) { bombaCalcEl.textContent = kwBombaAuto; bombaCalcEl.style.color = kwhTotalBoleta > 0 ? 'var(--acc)' : 'var(--tx3)'; }
     const bombaM = bombaKw * pxkw;
-    const sel = _cbDepts.filter(d => document.getElementById('cb-bomba-'+d.id)?.checked);
+    const bombaDList = window._cbBombaDepts || _cbDepts;
+    const sel = bombaDList.filter(d => document.getElementById('cb-bomba-'+d.id)?.checked);
     const bombaPerDept = sel.length > 0 ? bombaM / sel.length : 0;
     let distTotal = 0;
     _cbDepts.forEach(d => {
@@ -3065,7 +3075,8 @@ async function guardarBoleta() {
     _cbDepts.forEach(d => { totalKw += parseFloat(document.getElementById('cb-kw-'+d.id)?.value||0); });
     const pxkw = totalKw>0?total/totalKw:0;
     const bombaM = bombaKw*pxkw;
-    const sel = _cbDepts.filter(d=>document.getElementById('cb-bomba-'+d.id)?.checked);
+    const bombaDListG = window._cbBombaDepts || _cbDepts;
+    const sel = bombaDListG.filter(d=>document.getElementById('cb-bomba-'+d.id)?.checked);
     const bombaPerDept = sel.length>0?bombaM/sel.length:0;
     _cbDepts.forEach(d => {
       const kw = parseFloat(document.getElementById('cb-kw-'+d.id)?.value||0);
