@@ -1157,9 +1157,21 @@ async function getConts() {
   return data||[];
 }
 async function getServs() {
-  if (!sb) return lsGet('servs');
-  const {data} = await sb.from('servicios').select('*').order('periodo',{ascending:false});
-  return data||[];
+  // Lee de historial_boletas — la única fuente de verdad
+  const all = await getHistorial();
+  // Solo las que tienen distribucion (boletas cargadas con distribución)
+  return all.filter(h => h.distribucion && Object.keys(h.distribucion).length > 0)
+            .map(h => ({
+              id: h.id,
+              tipo: h.tipo || h.servicio,
+              periodo: h.periodo || (h.vto_cobro ? h.vto_cobro.slice(0,7) : null),
+              total: parseFloat(h.monto) || 0,
+              metodo: h.metodo || 'porcentaje',
+              distribucion: h.distribucion,
+              numero_boleta: h.numero_boleta || null,
+              fecha_vencimiento: h.vto_real || h.vto_cobro || null,
+              fecha: h.fecha_carga || null
+            }));
 }
 async function getMants() {
   if (!sb) return lsGet('mants');
@@ -1188,12 +1200,8 @@ async function saveCont(c) {
   if (error) { console.error('Error guardando contrato:', error); alert('Error al guardar contrato: ' + error.message); }
 }
 async function saveServ(s) {
-  if (!sb) { lsUpsert('servs',s); return; }
-  const {error} = await sb.from('servicios').upsert(s);
-  if (error) {
-    console.error('saveServ error:', error.message, 'columnas:', Object.keys(s));
-    alert('Error guardando boleta: ' + error.message);
-  }
+  // Redirigir a historial_boletas — tabla unificada
+  await saveHistorial(s);
 }
 async function saveMant(m) { if (!sb) { lsUpsert('mants',m); return; } await sb.from('mantenimiento').upsert(m); }
 
@@ -2410,20 +2418,11 @@ async function saveHistorial(h) {
 }
 
 async function delHistorial(id) {
-  // Borrar de historial_boletas
+  // Una sola tabla — borrar una vez
   if (sb) {
     await sb.from('historial_boletas').delete().eq('id', id);
-    // Borrar también de servicios (el id de servicios puede ser el mismo o con sufijo _h)
-    await sb.from('servicios').delete().eq('id', id);
-    const idBase = id.endsWith('_h') ? id.slice(0, -2) : id + '_h';
-    await sb.from('servicios').delete().eq('id', idBase);
-    await sb.from('historial_boletas').delete().eq('id', idBase);
   } else {
     lsDel('historial', id);
-    lsDel('servs', id);
-    const idBase = id.endsWith('_h') ? id.slice(0, -2) : id + '_h';
-    lsDel('servs', idBase);
-    lsDel('historial', idBase);
   }
 }
 
@@ -3265,55 +3264,40 @@ async function guardarBoleta() {
     });
   }
   const boletaId = uid();
-  const serv = {
-    id: boletaId, tipo, periodo, total,
-    metodo: (tipo==='luz'||distrib==='medidor')?'kw':'porcentaje',
-    distribucion, numero_boleta,
-    fecha_vencimiento: document.getElementById('cb-venc').value||null,
-    fecha: new Date().toISOString().slice(0,10)
-  };
-  await saveServ(serv);
-  // También guardar en historial automáticamente
   const hoy = new Date().toISOString().slice(0,10);
-  const histEntry = {
-    id: boletaId + '_h',
-    servicio: (() => {
-      // Buscar la clave correcta del historial por número de cuenta
-      const cuenta = _cbServicio?.cuenta || '';
-      const cuentaMap = {
-        '4855':'edenor1', '5362664855':'edenor1',
-        '6959':'edenor2', '2301716959':'edenor2',
-        '7966':'edenor3', '8397487966':'edenor3',
-        '948':'aysa1',  '1718948':'aysa1',
-        '951':'aysa2',  '1718951':'aysa2',
-        '355/7':'gas1', '222355/7':'gas1',
-        '354/5':'gas2', '222354/5':'gas2',
-        '21264378892':'claro',
-        '430459/5':'muni1',
-        '430458/1':'muni2', '430458':'muni2',
-      };
-      // Buscar por coincidencia parcial
-      for (const [k, v] of Object.entries(cuentaMap)) {
-        if (cuenta.includes(k) || k.includes(cuenta)) return v;
-      }
-      // Si no matchea usar tipo
-      return tipo;
-    })(),
-    vto_cobro: document.getElementById('cb-venc').value || hoy,
-    vto_real: document.getElementById('cb-venc').value || null,
+  const venc = document.getElementById('cb-venc').value || null;
+  // Buscar clave del servicio por número de cuenta
+  const cuenta = _cbServicio?.cuenta || '';
+  const cuentaMap = {
+    '4855':'edenor1','5362664855':'edenor1','6959':'edenor2','2301716959':'edenor2',
+    '7966':'edenor3','8397487966':'edenor3','948':'aysa1','1718948':'aysa1',
+    '951':'aysa2','1718951':'aysa2','355/7':'gas1','222355/7':'gas1',
+    '354/5':'gas2','222354/5':'gas2','21264378892':'claro',
+    '430459/5':'muni1','430458/1':'muni2','430458':'muni2'
+  };
+  let svKey = tipo;
+  for (const [k,v] of Object.entries(cuentaMap)) {
+    if (cuenta.includes(k)||k.includes(cuenta)) { svKey=v; break; }
+  }
+  // UN SOLO OBJETO — se guarda una sola vez en historial_boletas
+  const boleta = {
+    id: boletaId,
+    servicio: svKey,
+    tipo,
+    periodo: periodo,
     monto: total,
-    periodo_fact: document.getElementById('cb-periodo-fact').value || document.getElementById('cb-periodo').value || null,
+    metodo: (tipo==='luz'||distrib==='medidor')?'kw':'porcentaje',
+    distribucion,
+    numero_boleta: cuenta || null,
+    vto_cobro: venc || hoy,
+    vto_real: venc || null,
+    periodo_fact: document.getElementById('cb-periodo-fact').value || periodo || null,
     estado: 'pendiente',
     detalle: document.getElementById('cb-detalle').value || null,
     pagador: document.getElementById('cb-pagador').value || null,
     fecha_carga: hoy
   };
-  if (sb) {
-    const {error: hErr} = await sb.from('historial_boletas').upsert(histEntry);
-    if (hErr) console.error('Error guardando en historial:', hErr.message);
-  } else {
-    lsUpsert('historial', histEntry);
-  }
+  await saveHistorial(boleta);
   alert('✅ Boleta guardada y registrada en Historial');
   // Recalcular cobros si está visible
   if (document.getElementById('page-cobros')?.classList.contains('active')) renderCobros();
