@@ -1959,16 +1959,18 @@ async function renderCobros(){
   activos.forEach(c=>{
     const dept=depts.find(d=>d.id===c.dept_id);
     const inq=inqs.find(i=>i.id===c.inq_id);
-    let luz=0,gas=0,agua=0,abl=0,mun=0;
+    let luz=0,gas=0,agua=0,abl=0,mun=0,otros=0;
     servMes.forEach(s=>{
       const v=parseFloat(s.distribucion?.[c.dept_id]?.monto||0);
-      if(s.tipo==='luz')luz+=v;
-      if(s.tipo==='gas')gas+=v;
-      if(s.tipo==='agua')agua+=v;
-      if(s.tipo==='abl')abl+=v;
-      if(s.tipo==='municipal')mun+=v;
+      if(!v) return;
+      if(s.tipo==='luz'||s.tipo==='bomba')luz+=v;
+      else if(s.tipo==='gas')gas+=v;
+      else if(s.tipo==='agua')agua+=v;
+      else if(s.tipo==='abl'||s.tipo==='arba')abl+=v;
+      else if(s.tipo==='municipal')mun+=v;
+      else otros+=v; // internet, streaming, etc.
     });
-    const total=c.monto+luz+gas+agua+abl+mun;
+    const total=c.monto+luz+gas+agua+abl+mun+otros;
     totalGen+=total;
     const pagado=pagadosIds.has(c.id);
     h+=`<tr style="${pagado?'opacity:.6':''}">
@@ -2018,8 +2020,8 @@ async function _buildRecibo(contId, mes, esPago){
     <td style="padding:8px 10px;text-align:right;font-weight:600">${fmt(c.monto)}</td>
   </tr>` : '';
   let totalServ=0;
-  const tipoIcon={luz:'⚡',gas:'🔥',agua:'💧',abl:'🏛️',municipal:'🏙️'};
-  const tipoLabel={luz:'Luz',gas:'Gas',agua:'Agua',abl:'ARBA',municipal:'Imp. Municipal'};
+  const tipoIcon={luz:'⚡',gas:'🔥',agua:'💧',abl:'🏛️',arba:'📄',municipal:'🏙️',bomba:'💡',internet:'🌐',streaming:'📺'};
+  const tipoLabel={luz:'Luz',gas:'Gas',agua:'Agua',abl:'ARBA',arba:'ARBA',municipal:'Imp. Municipal',bomba:'Bomba de agua',internet:'Internet',streaming:'Streaming'};
   servMes.forEach(s=>{
     const dist=s.distribucion?.[c.dept_id];
     if(!dist||!dist.monto)return;
