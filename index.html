@@ -2448,21 +2448,47 @@ async function guardarHistorial() {
   if (!monto || !document.getElementById('h-vto-cobro').value) {
     alert('Ingresá monto y fecha de vencimiento de cobro'); return;
   }
+  // Si es edición, traer el registro original para conservar distribucion y recalcularla
+  const all = await getHistorial();
+  const original = all.find(x => x.id === id);
+  let distribucion = original?.distribucion || null;
+  // Si tiene distribucion y cambió el monto, recalcular proporcionalmente
+  if (distribucion && original?.monto && monto !== parseFloat(original.monto)) {
+    const montoViejo = parseFloat(original.monto);
+    const factor = monto / montoViejo;
+    const nuevaDistrib = {};
+    for (const [deptId, val] of Object.entries(distribucion)) {
+      nuevaDistrib[deptId] = {
+        ...val,
+        monto: Math.round((val.monto || 0) * factor),
+        extras: (val.extras||[]).map(e => ({...e, monto: Math.round((e.monto||0)*factor)}))
+      };
+    }
+    distribucion = nuevaDistrib;
+  }
   const h = {
     id,
     servicio: document.getElementById('h-serv').value,
+    tipo: original?.tipo || document.getElementById('h-serv').value,
+    periodo: original?.periodo || null,
     vto_cobro: document.getElementById('h-vto-cobro').value,
     vto_real: document.getElementById('h-vto-real').value || null,
     monto,
+    distribucion,
+    metodo: original?.metodo || null,
+    numero_boleta: original?.numero_boleta || null,
     periodo_fact: document.getElementById('h-periodo').value || null,
     estado: document.getElementById('h-estado').value,
     detalle: document.getElementById('h-detalle').value || null,
     pagador: document.getElementById('h-pagador').value || null,
-    fecha_carga: new Date().toISOString().slice(0,10)
+    fecha_carga: original?.fecha_carga || new Date().toISOString().slice(0,10)
   };
   await saveHistorial(h);
   cm('mo-historial');
   renderHistorial();
+  // Recalcular cobros y dashboard
+  renderDash();
+  if (document.getElementById('page-cobros')?.classList.contains('active')) renderCobros();
 }
 
 async function editarHistorial(id) {
