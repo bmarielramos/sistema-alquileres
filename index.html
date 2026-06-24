@@ -1994,7 +1994,7 @@ async function renderCobros(){
       if(s.tipo==='luz'||s.tipo==='bomba')luz+=v;
       else if(s.tipo==='gas')gas+=v;
       else if(s.tipo==='agua')agua+=v;
-      else if(s.tipo==='abl'||s.tipo==='arba'||s.tipo==='abl_anual'||s.servicio==='muni1'||s.servicio==='arba')abl+=v;
+      else if(['abl','arba','abl_anual'].includes(s.tipo)||['muni1','arba'].includes(s.servicio))abl+=v;
       else if(s.tipo==='municipal'||s.servicio==='muni2')mun+=v;
       else otros+=v; // internet, streaming, etc.
     });
@@ -3282,17 +3282,17 @@ async function guardarBoleta() {
   if (!tipoRaw || !cuentaId || !periodo || !totalIngresado) { alert('Completá tipo, cuenta, período y monto'); return; }
   // ARBA anual: dividir por 12 y cobrar una cuota
   const esArbaAnual = tipoRaw === 'abl_anual';
-  const tipo = esArbaAnual ? 'abl' : tipoRaw;
+  // tipo para distribución (abl usa partes-iguales igual que mensual)
+  const tipoDistrib = esArbaAnual ? 'abl' : tipoRaw;
+  // tipo que se guarda en la boleta (mantener abl_anual para el mapeo correcto)
+  const tipo = tipoRaw;
+  // total: si es anual dividir por 12
   const total = esArbaAnual ? Math.round(totalIngresado / 12) : totalIngresado;
-  if (esArbaAnual) {
-    const cuota = Math.round(totalIngresado / 12);
-    console.log(`ARBA Anual: $${totalIngresado} ÷ 12 = $${cuota} por cuota`);
-  }
   const distrib = _cbServicio?.distrib||'partes-iguales';
   const distribucion = {};
   const kwhTotalBoleta = parseFloat(document.getElementById('cb-kwh-total')?.value||0);
   let numero_boleta = _cbServicio?.cuenta||null;
-  if (tipo === 'luz' || distrib === 'medidor') {
+  if (tipoDistrib === 'luz' || distrib === 'medidor') {
     const bombaKw = parseFloat(document.getElementById('cb-bomba-kw')?.value||0);
     let totalKw = bombaKw;
     _cbDepts.forEach(d => { totalKw += parseFloat(document.getElementById('cb-kw-'+d.id)?.value||0); });
@@ -3395,6 +3395,7 @@ async function guardarBoleta() {
       ? `Cuota 1/12 — Total anual: ${fmt(totalIngresado)}`
       : (document.getElementById('cb-periodo-fact').value || periodo || null),
     estado: 'pendiente',
+    tipo: tipoRaw,
     detalle: esArbaAnual
       ? `ARBA Anual $${totalIngresado.toLocaleString('es-AR')} ÷ 12 = $${total.toLocaleString('es-AR')}/mes${document.getElementById('cb-detalle').value ? ' — ' + document.getElementById('cb-detalle').value : ''}`
       : (document.getElementById('cb-detalle').value || null),
