@@ -364,7 +364,8 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
         <option value="gas">🔥 Gas</option>
         <option value="agua">💧 Agua</option>
         <option value="bomba">💡 Bomba de agua</option>
-        <option value="abl">🏛️ ARBA</option>
+        <option value="abl">🏛️ ARBA (mensual)</option>
+        <option value="abl_anual">🏛️ ARBA (anual ÷12)</option>
         <option value="municipal">🏙️ Imp. Municipal</option>
         <option value="internet">🌐 Internet</option>
         <option value="streaming">📺 Streaming</option>
@@ -911,7 +912,8 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
         <option value="gas">🔥 Gas</option>
         <option value="agua">💧 Agua</option>
         <option value="bomba">💡 Bomba de agua</option>
-        <option value="abl">🏛️ ARBA</option>
+        <option value="abl">🏛️ ARBA (mensual)</option>
+        <option value="abl_anual">🏛️ ARBA (anual ÷12)</option>
         <option value="municipal">🏙️ Imp. Municipal</option>
         <option value="internet">🌐 Internet</option>
         <option value="streaming">📺 Streaming</option>
@@ -1168,10 +1170,20 @@ async function getServs() {
   // Lee de historial_boletas — la única fuente de verdad
   const all = await getHistorial();
   // Solo las que tienen distribucion (boletas cargadas con distribución)
+  // Mapeo servicio→tipo para renderCobros (que usa s.tipo)
+  const servicioATipo = {
+    'edenor1':'luz','edenor2':'luz','edenor3':'luz',
+    'aysa1':'agua','aysa2':'agua',
+    'gas1':'gas','gas2':'gas',
+    'muni1':'abl','muni2':'municipal',
+    'arba':'arba','claro':'internet','netflix':'streaming',
+    'bomba':'bomba'
+  };
   return all.filter(h => h.distribucion && Object.keys(h.distribucion).length > 0)
             .map(h => ({
               id: h.id,
-              tipo: h.tipo || h.servicio,
+              tipo: h.tipo || servicioATipo[h.servicio] || h.servicio,
+              servicio: h.servicio,
               periodo: h.periodo || (h.vto_cobro ? h.vto_cobro.slice(0,7) : null),
               total: parseFloat(h.monto) || 0,
               metodo: h.metodo || 'porcentaje',
@@ -1673,7 +1685,7 @@ function buscarDeptPorNc(){
 function onTipoServ(){
   const tipo=document.getElementById('s-tipo').value;
   const esLuz=tipo==='luz';
-  const esGasAgua=['gas','agua','bomba','abl','municipal','internet','streaming'].includes(tipo);
+  const esGasAgua=['gas','agua','bomba','abl','abl_anual','municipal','internet','streaming'].includes(tipo);
   document.getElementById('blk-luz').style.display=esLuz?'':'none';
   document.getElementById('blk-gasagua').style.display=esGasAgua?'':'none';
   const labels={gas:'Gas',agua:'Agua',bomba:'Bomba de agua',abl:'ARBA',municipal:'Imp. Municipal',internet:'Internet',streaming:'Streaming'};
@@ -1982,8 +1994,8 @@ async function renderCobros(){
       if(s.tipo==='luz'||s.tipo==='bomba')luz+=v;
       else if(s.tipo==='gas')gas+=v;
       else if(s.tipo==='agua')agua+=v;
-      else if(s.tipo==='abl'||s.tipo==='arba')abl+=v;
-      else if(s.tipo==='municipal')mun+=v;
+      else if(s.tipo==='abl'||s.tipo==='arba'||s.tipo==='abl_anual'||s.servicio==='muni1'||s.servicio==='arba')abl+=v;
+      else if(s.tipo==='municipal'||s.servicio==='muni2')mun+=v;
       else otros+=v; // internet, streaming, etc.
     });
     const total=c.monto+luz+gas+agua+abl+mun+otros;
@@ -2386,6 +2398,7 @@ const HIST_LABELS = {
   bomba:'💡 Bomba de agua',
   municipal:'🏙️ Municipal',
   abl:'🏛️ ABL / ARBA',
+  abl_anual:'🏛️ ARBA Anual (÷12)',
   internet:'🌐 Internet',
   streaming:'📺 Streaming'
 };
@@ -2880,8 +2893,8 @@ async function delDatoServ(id) {
   await sb.from('datos_servicios').delete().eq('id', id);
 }
 
-const TIPO_LABEL={luz:'Luz',gas:'Gas',agua:'Agua',bomba:'Bomba',abl:'ARBA',municipal:'Municipal',internet:'Internet',streaming:'Streaming'};
-const DS_ICONS = {luz:'⚡',gas:'🔥',agua:'💧',bomba:'💡',abl:'🏛️',municipal:'🏙️',internet:'🌐',streaming:'📺'};
+const TIPO_LABEL={luz:'Luz',gas:'Gas',agua:'Agua',bomba:'Bomba',abl:'ARBA',abl_anual:'ARBA Anual',municipal:'Municipal',internet:'Internet',streaming:'Streaming'};
+const DS_ICONS = {luz:'⚡',gas:'🔥',agua:'💧',bomba:'💡',abl:'🏛️',abl_anual:'🏛️',municipal:'🏙️',internet:'🌐',streaming:'📺'};
 
 let _dsPctFijo = {};
 
@@ -3262,11 +3275,19 @@ function recalcCB() {
 }
 
 async function guardarBoleta() {
-  const tipo = document.getElementById('cb-tipo').value;
+  const tipoRaw = document.getElementById('cb-tipo').value;
   const cuentaId = document.getElementById('cb-cuenta').value;
   const periodo = document.getElementById('cb-periodo').value;
-  const total = parseFloat(document.getElementById('cb-total').value)||0;
-  if (!tipo || !cuentaId || !periodo || !total) { alert('Completá tipo, cuenta, período y monto'); return; }
+  const totalIngresado = parseFloat(document.getElementById('cb-total').value)||0;
+  if (!tipoRaw || !cuentaId || !periodo || !totalIngresado) { alert('Completá tipo, cuenta, período y monto'); return; }
+  // ARBA anual: dividir por 12 y cobrar una cuota
+  const esArbaAnual = tipoRaw === 'abl_anual';
+  const tipo = esArbaAnual ? 'abl' : tipoRaw;
+  const total = esArbaAnual ? Math.round(totalIngresado / 12) : totalIngresado;
+  if (esArbaAnual) {
+    const cuota = Math.round(totalIngresado / 12);
+    console.log(`ARBA Anual: $${totalIngresado} ÷ 12 = $${cuota} por cuota`);
+  }
   const distrib = _cbServicio?.distrib||'partes-iguales';
   const distribucion = {};
   const kwhTotalBoleta = parseFloat(document.getElementById('cb-kwh-total')?.value||0);
@@ -3325,23 +3346,38 @@ async function guardarBoleta() {
   const venc = document.getElementById('cb-venc').value || null;
   // Buscar clave del servicio por número de cuenta
   const cuenta = _cbServicio?.cuenta || '';
-  const cuentaMap = {
-    '4855':'edenor1','5362664855':'edenor1','6959':'edenor2','2301716959':'edenor2',
-    '7966':'edenor3','8397487966':'edenor3','948':'aysa1','1718948':'aysa1',
-    '951':'aysa2','1718951':'aysa2','355/7':'gas1','222355/7':'gas1',
-    '354/5':'gas2','222354/5':'gas2','21264378892':'claro',
-    '430459/5':'muni1','430458/1':'muni2','430458':'muni2'
-  };
-  let svKey = tipo;
-  // Mapear tipos genéricos a códigos del historial
+  // TICKET 1,2,3: el tipo tiene prioridad absoluta sobre la cuenta
+  // Mapeo tipo → servicio historial (siempre gana sobre la cuenta)
   const tipoToHistorial = {
-    'abl': 'arba', 'municipal': 'muni1',
-    'bomba': 'bomba', 'internet': 'claro', 'streaming': 'netflix'
+    'luz':       null,        // se resuelve por cuenta
+    'gas':       null,        // se resuelve por cuenta
+    'agua':      null,        // se resuelve por cuenta
+    'bomba':     'bomba',     // TICKET 3: bomba siempre es bomba
+    'abl':       'muni1',     // TICKET 1: abl mensual → muni1 (430459/5)
+    'abl_anual': 'arba',      // ARBA anual inmobiliario
+    'municipal': 'muni2',     // TICKET 1: municipal → muni2 (430458)
+    'internet':  'claro',     // internet → claro
+    'streaming': 'netflix',   // TICKET 2: streaming siempre es netflix
   };
-  if (tipoToHistorial[tipo]) svKey = tipoToHistorial[tipo];
-  // Si la cuenta matchea algo más específico, usar eso
-  for (const [k,v] of Object.entries(cuentaMap)) {
-    if (cuenta && (cuenta.includes(k)||k.includes(cuenta))) { svKey=v; break; }
+  let svKey = tipoToHistorial[tipo] !== undefined ? tipoToHistorial[tipo] : tipo;
+  // Solo si el tipo no tiene mapeo fijo, resolver por número de cuenta
+  if (svKey === null || svKey === tipo) {
+    const cuentaMap = {
+      '5362664855':'edenor1','4855':'edenor1',
+      '2301716959':'edenor2','6959':'edenor2',
+      '8397487966':'edenor3','7966':'edenor3',
+      '1718948':'aysa1','948':'aysa1',
+      '1718951':'aysa2','951':'aysa2',
+      '222355/7':'gas1','355/7':'gas1',
+      '222354/5':'gas2','354/5':'gas2',
+      '21264378892':'claro',
+      '430459/5':'muni1',
+      '430458/1':'muni2','430458':'muni2'
+    };
+    for (const [k,v] of Object.entries(cuentaMap)) {
+      if (cuenta && cuenta.includes(k)) { svKey=v; break; }
+    }
+    if (svKey === null) svKey = tipo;
   }
   // UN SOLO OBJETO — se guarda una sola vez en historial_boletas
   const boleta = {
@@ -3355,9 +3391,13 @@ async function guardarBoleta() {
     numero_boleta: cuenta || null,
     vto_cobro: venc || hoy,
     vto_real: venc || null,
-    periodo_fact: document.getElementById('cb-periodo-fact').value || periodo || null,
+    periodo_fact: esArbaAnual
+      ? `Cuota 1/12 — Total anual: ${fmt(totalIngresado)}`
+      : (document.getElementById('cb-periodo-fact').value || periodo || null),
     estado: 'pendiente',
-    detalle: document.getElementById('cb-detalle').value || null,
+    detalle: esArbaAnual
+      ? `ARBA Anual $${totalIngresado.toLocaleString('es-AR')} ÷ 12 = $${total.toLocaleString('es-AR')}/mes${document.getElementById('cb-detalle').value ? ' — ' + document.getElementById('cb-detalle').value : ''}`
+      : (document.getElementById('cb-detalle').value || null),
     pagador: document.getElementById('cb-pagador').value || null,
     fecha_carga: hoy
   };
