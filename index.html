@@ -638,15 +638,23 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
         <option value="edenor1">⚡ Edenor 1 (Cta.4855)</option>
         <option value="edenor2">⚡ Edenor 2 (Cta.6959)</option>
         <option value="edenor3">⚡ Edenor 3 (Cta.7966)</option>
+        <option value="luz">⚡ Luz (genérico)</option>
         <option value="aysa1">💧 AySA 1 (Cta.948)</option>
         <option value="aysa2">💧 AySA 2 (Cta.951)</option>
+        <option value="agua">💧 Agua (genérico)</option>
         <option value="gas1">🔥 Gas 1 - Naturgy (355/7)</option>
         <option value="gas2">🔥 Gas 2 - Naturgy (354/5)</option>
+        <option value="gas">🔥 Gas (genérico)</option>
+        <option value="bomba">💡 Bomba de agua</option>
         <option value="claro">🌐 Claro Internet</option>
+        <option value="internet">🌐 Internet (genérico)</option>
         <option value="netflix">📺 Netflix</option>
-        <option value="muni1">🏛️ ARBA (430459/5)</option>
+        <option value="streaming">📺 Streaming (genérico)</option>
+        <option value="muni1">🏛️ ARBA ABL (430459/5)</option>
         <option value="muni2">🏛️ Muni Terreno (430458)</option>
-        <option value="arba">📄 ARBA</option>
+        <option value="arba">📄 ARBA Inmobiliario</option>
+        <option value="abl">🏛️ ABL / ARBA (genérico)</option>
+        <option value="municipal">🏙️ Municipal (genérico)</option>
       </select>
     </div>
     <div class="fg">
@@ -2377,6 +2385,7 @@ const HIST_LABELS = {
   agua:'💧 Agua',
   bomba:'💡 Bomba de agua',
   municipal:'🏙️ Municipal',
+  abl:'🏛️ ABL / ARBA',
   internet:'🌐 Internet',
   streaming:'📺 Streaming'
 };
@@ -3278,16 +3287,38 @@ async function guardarBoleta() {
       const extras = bCheck&&bombaPerDept>0?[{concepto:'Bomba de agua',monto:Math.round(bombaPerDept)}]:[];
       distribucion[d.id] = {monto, kw, extras};
     });
+  } else if (distrib === 'unico') {
+    // Pago único — asignar el total completo al primer depto
+    if (_cbDepts.length > 0) distribucion[_cbDepts[0].id] = {monto: total, pct: 100};
   } else {
-    const metodo = document.querySelector('input[name="cb-metodo"]:checked')?.value||'pct';
-    let suma = 0;
-    _cbDepts.forEach(d=>{suma+=parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0);});
-    const factor = metodo==='frac'?suma:suma/100;
-    _cbDepts.forEach(d=>{
-      const v = parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0);
-      const monto = total>0&&factor>0?Math.round((metodo==='frac'?v:v/100)*total/factor):0;
-      distribucion[d.id] = {monto, pct:metodo==='frac'?v*100:v};
-    });
+    // partes-iguales, porcentaje fijo, fraccion
+    const metodo = distrib === 'partes-iguales' ? 'igual'
+                 : distrib === 'porcentaje' ? 'pct'
+                 : (document.querySelector('input[name="cb-metodo"]:checked')?.value || 'pct');
+    // Para pct fijo usar los valores del servicio directamente
+    if (distrib === 'porcentaje' && _cbServicio?.pct_fijo) {
+      const pctFijo = _cbServicio.pct_fijo;
+      _cbDepts.forEach(d => {
+        const pct = parseFloat(pctFijo[d.id] || 0);
+        const monto = total > 0 ? Math.round(pct / 100 * total) : 0;
+        distribucion[d.id] = {monto, pct};
+      });
+    } else if (metodo === 'igual') {
+      const montoIgual = Math.round(total / _cbDepts.length);
+      _cbDepts.forEach((d, i) => {
+        const monto = i === _cbDepts.length-1 ? total - montoIgual*(_cbDepts.length-1) : montoIgual;
+        distribucion[d.id] = {monto, pct: parseFloat((100/_cbDepts.length).toFixed(2))};
+      });
+    } else {
+      let suma = 0;
+      _cbDepts.forEach(d => { suma += parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0); });
+      const factor = metodo === 'frac' ? suma : suma / 100;
+      _cbDepts.forEach(d => {
+        const v = parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0);
+        const monto = total>0&&factor>0 ? Math.round((metodo==='frac'?v:v/100)*total/factor) : 0;
+        distribucion[d.id] = {monto, pct: metodo==='frac' ? v*100 : v};
+      });
+    }
   }
   const boletaId = uid();
   const hoy = new Date().toISOString().slice(0,10);
@@ -3302,8 +3333,15 @@ async function guardarBoleta() {
     '430459/5':'muni1','430458/1':'muni2','430458':'muni2'
   };
   let svKey = tipo;
+  // Mapear tipos genéricos a códigos del historial
+  const tipoToHistorial = {
+    'abl': 'arba', 'municipal': 'muni1',
+    'bomba': 'bomba', 'internet': 'claro', 'streaming': 'netflix'
+  };
+  if (tipoToHistorial[tipo]) svKey = tipoToHistorial[tipo];
+  // Si la cuenta matchea algo más específico, usar eso
   for (const [k,v] of Object.entries(cuentaMap)) {
-    if (cuenta.includes(k)||k.includes(cuenta)) { svKey=v; break; }
+    if (cuenta && (cuenta.includes(k)||k.includes(cuenta))) { svKey=v; break; }
   }
   // UN SOLO OBJETO — se guarda una sola vez en historial_boletas
   const boleta = {
