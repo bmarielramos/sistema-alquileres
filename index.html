@@ -1983,7 +1983,7 @@ async function renderCobros(){
   const servMes=servs.filter(s=>s.periodo===mes);
   const pagadosIds=new Set(pagos.filter(p=>p.estado==='pagado').map(p=>p.contrato_id));
   let totalGen=0;
-  let h=`<table><thead><tr><th>Dpto</th><th>Inquilino</th><th>Alquiler</th><th>⚡ Luz</th><th>🔥 Gas</th><th>💧 Agua</th><th>🏛️ ARBA</th><th>🏙️ Mun.</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>`;
+  let h=`<table><thead><tr><th>Dpto</th><th>Inquilino</th><th>Alquiler</th><th>⚡ Luz</th><th>🔥 Gas</th><th>💧 Agua</th><th>🏛️ ARBA</th><th>🏙️ Mun.</th><th>🌐 Otros</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>`;
   activos.forEach(c=>{
     const dept=depts.find(d=>d.id===c.dept_id);
     const inq=inqs.find(i=>i.id===c.inq_id);
@@ -2010,6 +2010,7 @@ async function renderCobros(){
     <td>${agua>0?fmt(agua):'<span style="color:var(--tx3)">—</span>'}</td>
     <td>${abl>0?fmt(abl):'<span style="color:var(--tx3)">—</span>'}</td>
     <td>${mun>0?fmt(mun):'<span style="color:var(--tx3)">—</span>'}</td>
+    <td>${otros>0?fmt(otros):'<span style="color:var(--tx3)">—</span>'}</td>
     <td style="font-weight:700">${fmt(total)}</td>
     <td>${pagado?'<span class="bdg green">✓ Pagado</span>':'<span class="bdg amber">Pendiente</span>'}</td>
     <td style="white-space:nowrap;display:flex;gap:4px">
@@ -2017,7 +2018,7 @@ async function renderCobros(){
       ${!pagado?`<button class="btn sm suc" onclick="marcarPagadoDesde('${c.id}','${mes}',${total})"><i class="ti ti-check"></i> Pagado</button>`:`<button class="btn sm" onclick="verReciboPago('${c.id}','${mes}')"><i class="ti ti-file-check"></i> Recibo</button>`}
     </td></tr>`;
   });
-  h+=`</tbody><tfoot><tr style="background:var(--bg2)"><td colspan="9" style="padding:9px;font-weight:600">Total general del mes</td><td></td><td style="padding:9px;font-weight:700;font-size:15px">${fmt(totalGen)}</td></tr></tfoot></table>`;
+  h+=`</tbody><tfoot><tr style="background:var(--bg2)"><td colspan="10" style="padding:9px;font-weight:600">Total general del mes</td><td style="padding:9px;font-weight:700;font-size:15px">${fmt(totalGen)}</td></tr></tfoot></table>`;
   el.innerHTML=h;
 }
 
