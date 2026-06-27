@@ -3187,6 +3187,16 @@ async function buildCBDistribucion() {
   } else {
     blkLuz.style.display = 'none';
     blkPct.style.display = '';
+    // Show inactive deptos warning
+    const contsNow = await getConts();
+    const activeIds = new Set(contsNow.filter(c=>c.estado==='activo').map(c=>c.dept_id));
+    const inactiveDepts = _cbDepts.filter(d=>!activeIds.has(d.id));
+    if (inactiveDepts.length > 0) {
+      const warn = document.createElement('div');
+      warn.style.cssText = 'padding:8px 12px;background:#fff3cd;border-radius:var(--r);font-size:12px;margin-bottom:8px';
+      warn.innerHTML = `⚠️ <strong>${inactiveDepts.map(d=>'Depto '+d.num).join(', ')}</strong> sin contrato activo — se excluirá del reparto automáticamente.`;
+      blkPct.insertBefore(warn, blkPct.firstChild);
+    }
     // Build pct inputs
     const esIgual = distrib === 'partes-iguales';
     const esPctFijo = distrib === 'porcentaje';
@@ -3283,16 +3293,38 @@ async function guardarBoleta() {
   if (!tipoRaw || !cuentaId || !periodo || !totalIngresado) { alert('Completá tipo, cuenta, período y monto'); return; }
   // ARBA anual: dividir por 12 y cobrar una cuota
   const esArbaAnual = tipoRaw === 'abl_anual';
-  // tipo para distribución (abl usa partes-iguales igual que mensual)
   const tipoDistrib = esArbaAnual ? 'abl' : tipoRaw;
-  // tipo que se guarda en la boleta (mantener abl_anual para el mapeo correcto)
   const tipo = tipoRaw;
-  // total: si es anual dividir por 12
   const total = esArbaAnual ? Math.round(totalIngresado / 12) : totalIngresado;
   const distrib = _cbServicio?.distrib||'partes-iguales';
   const distribucion = {};
   const kwhTotalBoleta = parseFloat(document.getElementById('cb-kwh-total')?.value||0);
   let numero_boleta = _cbServicio?.cuenta||null;
+
+  // ══════════════════════════════════════════════════
+  // OPCIÓN A: filtrar solo deptos con contrato activo en el período
+  // ══════════════════════════════════════════════════
+  const conts = await getConts();
+  const deptoIdsConContrato = new Set(
+    conts
+      .filter(c => c.estado === 'activo')
+      .map(c => c.dept_id)
+  );
+  // Para pago único no filtrar — se asigna completo al depto configurado
+  const deptosActivos = distrib === 'unico'
+    ? _cbDepts
+    : _cbDepts.filter(d => deptoIdsConContrato.has(d.id));
+  const deptosVacios = _cbDepts.filter(d => !deptoIdsConContrato.has(d.id));
+  if (deptosVacios.length > 0 && distrib !== 'unico' && distrib !== 'medidor') {
+    const nombres = deptosVacios.map(d => 'Depto ' + d.num).join(', ');
+    const confirmMsg = `⚠️ ${nombres} no tiene contrato activo y será excluido del reparto.
+
+` +
+      `El gasto se dividirá entre ${deptosActivos.length} depto(s) ocupado(s).
+
+¿Continuar?`;
+    if (!confirm(confirmMsg)) return;
+  }
   if (distrib === 'unico') {
     // Pago único — primero, antes que cualquier otro chequeo de tipo
     // Asignar el total completo al depto configurado en el servicio
@@ -3322,22 +3354,26 @@ async function guardarBoleta() {
     // Para pct fijo usar los valores del servicio directamente
     if (distrib === 'porcentaje' && _cbServicio?.pct_fijo) {
       const pctFijo = _cbServicio.pct_fijo;
-      _cbDepts.forEach(d => {
-        const pct = parseFloat(pctFijo[d.id] || 0);
-        const monto = total > 0 ? Math.round(pct / 100 * total) : 0;
-        distribucion[d.id] = {monto, pct};
+      // Sumar solo los % de deptos activos y redistribuir al 100%
+      const sumaActivos = deptosActivos.reduce((a,d) => a + parseFloat(pctFijo[d.id]||0), 0);
+      deptosActivos.forEach(d => {
+        const pctOriginal = parseFloat(pctFijo[d.id] || 0);
+        const pctAjustado = sumaActivos > 0 ? pctOriginal / sumaActivos * 100 : 0;
+        const monto = total > 0 ? Math.round(pctAjustado / 100 * total) : 0;
+        distribucion[d.id] = {monto, pct: parseFloat(pctAjustado.toFixed(2))};
       });
     } else if (metodo === 'igual') {
-      const montoIgual = Math.round(total / _cbDepts.length);
-      _cbDepts.forEach((d, i) => {
-        const monto = i === _cbDepts.length-1 ? total - montoIgual*(_cbDepts.length-1) : montoIgual;
-        distribucion[d.id] = {monto, pct: parseFloat((100/_cbDepts.length).toFixed(2))};
+      const n = deptosActivos.length;
+      const montoIgual = Math.round(total / n);
+      deptosActivos.forEach((d, i) => {
+        const monto = i === n-1 ? total - montoIgual*(n-1) : montoIgual;
+        distribucion[d.id] = {monto, pct: parseFloat((100/n).toFixed(2))};
       });
     } else {
       let suma = 0;
-      _cbDepts.forEach(d => { suma += parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0); });
+      deptosActivos.forEach(d => { suma += parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0); });
       const factor = metodo === 'frac' ? suma : suma / 100;
-      _cbDepts.forEach(d => {
+      deptosActivos.forEach(d => {
         const v = parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0);
         const monto = total>0&&factor>0 ? Math.round((metodo==='frac'?v:v/100)*total/factor) : 0;
         distribucion[d.id] = {monto, pct: metodo==='frac' ? v*100 : v};
