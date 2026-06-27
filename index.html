@@ -3293,7 +3293,11 @@ async function guardarBoleta() {
   const distribucion = {};
   const kwhTotalBoleta = parseFloat(document.getElementById('cb-kwh-total')?.value||0);
   let numero_boleta = _cbServicio?.cuenta||null;
-  if (tipoDistrib === 'luz' || distrib === 'medidor') {
+  if (distrib === 'unico') {
+    // Pago único — primero, antes que cualquier otro chequeo de tipo
+    // Asignar el total completo al depto configurado en el servicio
+    if (_cbDepts.length > 0) distribucion[_cbDepts[0].id] = {monto: total, pct: 100};
+  } else if (tipoDistrib === 'luz' || distrib === 'medidor') {
     const bombaKw = parseFloat(document.getElementById('cb-bomba-kw')?.value||0);
     let totalKw = bombaKw;
     _cbDepts.forEach(d => { totalKw += parseFloat(document.getElementById('cb-kw-'+d.id)?.value||0); });
@@ -3309,9 +3313,7 @@ async function guardarBoleta() {
       const extras = bCheck&&bombaPerDept>0?[{concepto:'Bomba de agua',monto:Math.round(bombaPerDept)}]:[];
       distribucion[d.id] = {monto, kw, extras};
     });
-  } else if (distrib === 'unico') {
-    // Pago único — asignar el total completo al primer depto
-    if (_cbDepts.length > 0) distribucion[_cbDepts[0].id] = {monto: total, pct: 100};
+  } else if (false) { // placeholder eliminado
   } else {
     // partes-iguales, porcentaje fijo, fraccion
     const metodo = distrib === 'partes-iguales' ? 'igual'
