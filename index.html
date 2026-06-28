@@ -3492,13 +3492,37 @@ const ACCESOS_DEFAULT = [
 
 async function getAccesos() {
   const key = 'adm_accesos';
+  // Intentar Supabase primero
+  if (sb) {
+    try {
+      const {data, error} = await sb.from('configuracion').select('valor').eq('clave', key).maybeSingle();
+      if (!error && data?.valor) {
+        const parsed = JSON.parse(data.valor);
+        // Sync a localStorage como caché
+        const d = lsData(); d[key] = parsed; lsSave(d);
+        return parsed;
+      }
+    } catch(e) { console.warn('getAccesos Supabase error:', e.message); }
+  }
+  // Fallback localStorage
   const d = lsData();
   return d[key] || ACCESOS_DEFAULT;
 }
 
 async function saveAccesos(accesos) {
   const key = 'adm_accesos';
+  // Guardar en localStorage siempre
   const d = lsData(); d[key] = accesos; lsSave(d);
+  // Guardar en Supabase si está disponible
+  if (sb) {
+    try {
+      const {error} = await sb.from('configuracion').upsert({
+        clave: key,
+        valor: JSON.stringify(accesos)
+      });
+      if (error) console.error('saveAccesos Supabase error:', error.message);
+    } catch(e) { console.warn('saveAccesos Supabase error:', e.message); }
+  }
 }
 
 async function renderDashAccesos() {
