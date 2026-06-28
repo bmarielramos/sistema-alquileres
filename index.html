@@ -3071,6 +3071,7 @@ async function renderCargarBoleta() {
   document.getElementById('cb-periodo').value = mesActual();
   document.getElementById('cb-total').value = '';
   const kwhTotalEl = document.getElementById('cb-kwh-total'); if(kwhTotalEl) kwhTotalEl.value = '';
+  window._cbDeptosVacios = [];
   document.getElementById('cb-venc').value = '';
   document.getElementById('cb-periodo-fact').value = '';
   document.getElementById('cb-detalle').value = '';
@@ -3113,7 +3114,19 @@ async function cargarInfoCuenta() {
   if (!ds) return;
   _cbServicio = ds;
   const depts = await getDepts();
-  _cbDepts = (ds.dept_ids||[]).map(did=>depts.find(d=>d.id===did)).filter(Boolean);
+  const todosLosDeptos = (ds.dept_ids||[]).map(did=>depts.find(d=>d.id===did)).filter(Boolean);
+  // Filtrar solo deptos con contrato activo (Opción A)
+  // Para pago único no filtrar
+  if (ds.distrib === 'unico' || ds.distrib === 'medidor') {
+    _cbDepts = todosLosDeptos; // medidor: cada uno tiene su lectura real
+  } else {
+    const contsActivos = await getConts();
+    const idsActivos = new Set(contsActivos.filter(c=>c.estado==='activo').map(c=>c.dept_id));
+    const vacios = todosLosDeptos.filter(d=>!idsActivos.has(d.id));
+    _cbDepts = todosLosDeptos.filter(d=>idsActivos.has(d.id));
+    // Guardar referencia a los vacíos para mostrar en el aviso
+    window._cbDeptosVacios = vacios;
+  }
   const distribLabel = {medidor:'Por medidor individual (kWh)','partes-iguales':'Partes iguales',porcentaje:'Por porcentaje',unico:'Pago único (no se divide)'};
   const deptNums = _cbDepts.map(d=>`Depto ${d.num}`).join(' · ') || '—';
   infoEl.innerHTML = `
@@ -3157,6 +3170,17 @@ async function buildCBDistribucion() {
   if (tipo === 'luz' || distrib === 'medidor') {
     blkLuz.style.display = '';
     blkPct.style.display = 'none';
+    // Mostrar aviso deptos vacíos en luz también
+    const vaciosLuz = window._cbDeptosVacios || [];
+    const existWarnLuz = blkLuz.querySelector('.depto-vacio-warn');
+    if (existWarnLuz) existWarnLuz.remove();
+    if (vaciosLuz.length > 0) {
+      const wl = document.createElement('div');
+      wl.className = 'depto-vacio-warn';
+      wl.style.cssText = 'padding:8px 12px;background:#fff3cd;border-radius:var(--r);font-size:12px;margin-bottom:8px';
+      wl.innerHTML = `⚠️ <strong>${vaciosLuz.map(d=>'Depto '+d.num).join(', ')}</strong> sin contrato activo — excluido. Sus kWh no se cargan.`;
+      blkLuz.insertBefore(wl, blkLuz.firstChild);
+    }
     // Build kWh inputs
     let h = '';
     _cbDepts.forEach(d => {
@@ -3187,14 +3211,15 @@ async function buildCBDistribucion() {
   } else {
     blkLuz.style.display = 'none';
     blkPct.style.display = '';
-    // Show inactive deptos warning
-    const contsNow = await getConts();
-    const activeIds = new Set(contsNow.filter(c=>c.estado==='activo').map(c=>c.dept_id));
-    const inactiveDepts = _cbDepts.filter(d=>!activeIds.has(d.id));
-    if (inactiveDepts.length > 0) {
+    // Mostrar aviso de deptos vacíos excluidos (ya filtrados de _cbDepts)
+    const vacios = window._cbDeptosVacios || [];
+    const existingWarn = blkPct.querySelector('.depto-vacio-warn');
+    if (existingWarn) existingWarn.remove();
+    if (vacios.length > 0) {
       const warn = document.createElement('div');
+      warn.className = 'depto-vacio-warn';
       warn.style.cssText = 'padding:8px 12px;background:#fff3cd;border-radius:var(--r);font-size:12px;margin-bottom:8px';
-      warn.innerHTML = `⚠️ <strong>${inactiveDepts.map(d=>'Depto '+d.num).join(', ')}</strong> sin contrato activo — se excluirá del reparto automáticamente.`;
+      warn.innerHTML = `⚠️ <strong>${vacios.map(d=>'Depto '+d.num).join(', ')}</strong> sin contrato activo — excluido del reparto. Se divide entre <strong>${_cbDepts.length}</strong> depto(s) ocupado(s).`;
       blkPct.insertBefore(warn, blkPct.firstChild);
     }
     // Build pct inputs
