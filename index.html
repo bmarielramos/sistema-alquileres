@@ -1304,7 +1304,7 @@ async function saveCont(c) {
     const res2 = await sb.from('contratos').upsert(sinRol);
     error = res2.error;
   }
-  if (error) { console.error('Error guardando contrato:', error); alert('Error al guardar contrato: ' + error.message); }
+  if (error) { console.error('Error guardando contrato:', String(error?.message||error)); alert('Error al guardar contrato: ' + error.message); }
 }
 async function saveServ(s) {
   // Redirigir a historial_boletas — tabla unificada
@@ -2553,7 +2553,7 @@ async function getHistorial() {
   const local = lsGet('historial');
   if (!sb) return local;
   const {data, error} = await sb.from('historial_boletas').select('*').order('vto_cobro',{ascending:false});
-  if (error) { console.error('getHistorial error:', error.message); return local; }
+  if (error) { console.error('getHistorial error:', String(error?.message||error)); return local; }
   // Merge: supabase data + any local items not yet synced
   const sbIds = new Set((data||[]).map(x=>x.id));
   const localOnly = local.filter(x=>!sbIds.has(x.id));
@@ -2564,7 +2564,7 @@ async function saveHistorial(h) {
   if (!sb) { lsUpsert('historial', h); return; }
   const {error} = await sb.from('historial_boletas').upsert(h);
   if (error) {
-    console.error('saveHistorial error:', error.message, JSON.stringify(h));
+    console.error('saveHistorial error:', String(error?.message||error));
     // fallback to localStorage
     lsUpsert('historial', h);
   }
