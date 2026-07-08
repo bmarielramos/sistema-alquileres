@@ -2430,9 +2430,18 @@ async function renderDash(){
     const proximoAumento = Math.ceil(mesesDesdeInicio/3)*3;
     const mesesParaAumento = proximoAumento - mesesDesdeInicio;
     if (mesesParaAumento <= 1) {
+      // Calcular fecha del último aumento (múltiplo de 3 meses desde inicio)
+      const fechaUltimoAum = new Date(inicio);
+      fechaUltimoAum.setMonth(fechaUltimoAum.getMonth() + (Math.floor(mesesDesdeInicio/3)*3));
+      const fechaProxAum = new Date(inicio);
+      fechaProxAum.setMonth(fechaProxAum.getMonth() + proximoAumento);
+      const mesNombres = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      const fmtMes = d => mesNombres[d.getMonth()] + ' ' + d.getFullYear();
       ab.innerHTML+=`<div class="al warn"><i class="ti ti-trending-up"></i><span>
-        📈 <strong>${dept?dept.num:'?'}</strong> — ${inq?inq.nombre+' '+inq.apellido:'?'}
-        — Corresponde aplicar <strong>aumento IPC</strong> (trimestre ${Math.floor(mesesDesdeInicio/3)+1}).
+        📈 <strong>Depto ${dept?dept.num:'?'}</strong> — ${inq?inq.nombre+' '+inq.apellido:'?'}
+        — Corresponde aplicar <strong>aumento IPC</strong>.
+        Último aumento: <strong>${fmtMes(fechaUltimoAum)}</strong> →
+        Próximo: <strong>${fmtMes(fechaProxAum)}</strong>.
         Alquiler actual: <strong>${fmt(c.monto)}</strong>
         <button class="btn sm pri" onclick="abrirCalculadorIPC('${c.id}')" style="margin-left:7px">📊 Calcular IPC ↗</button>
       </span></div>`;
