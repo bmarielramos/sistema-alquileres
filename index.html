@@ -225,6 +225,8 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
     <div class="nl">Finanzas</div>
     <div class="ni" onclick="showPage('cobros',this)"><i class="ti ti-receipt"></i> <span class="nav-txt">Cobros</span></div>
     <div class="ni" onclick="showPage('pagos',this)"><i class="ti ti-circle-check"></i> <span class="nav-txt">Pagos</span></div>
+    <div class="ni" onclick="showPage('medidores',this)"><i class="ti ti-gauge"></i> <span class="nav-txt">Medidores</span></div>
+    <div class="ni" onclick="showPage('hist-alquileres',this)"><i class="ti ti-home-dollar"></i> <span class="nav-txt">Hist. Alq.</span></div>
     <div class="ni" onclick="showPage('mantenimiento',this)"><i class="ti ti-tools"></i> <span class="nav-txt">Manten.</span></div>
   </div>
   <div class="conn-dot" id="conn-status">⚪ Sin conexión Supabase</div>
@@ -458,9 +460,14 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
         </select>
       </div>
       <div class="fg">
-        <label>Período *</label>
-        <input id="cb-periodo" type="month">
+        <label>Período desde *</label>
+        <input id="cb-periodo-desde" type="date" onchange="updatePeriodoCB()">
       </div>
+      <div class="fg">
+        <label>Período hasta *</label>
+        <input id="cb-periodo-hasta" type="date" onchange="updatePeriodoCB()">
+      </div>
+      <input id="cb-periodo" type="hidden">
     </div>
     <!-- Info de la cuenta seleccionada -->
     <div id="cb-info-cuenta" style="display:none;margin-bottom:1rem;padding:10px 14px;background:var(--bg2);border-radius:var(--r);font-size:13px"></div>
@@ -554,6 +561,58 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
       <button class="btn pri" onclick="guardarBoleta()"><i class="ti ti-device-floppy"></i> Guardar boleta</button>
     </div>
   </div>
+</div>
+
+<!-- MEDIDORES kWh -->
+<div id="page-medidores" class="page">
+  <div class="ph">
+    <div><h1>Calculador de Medidores</h1><p>Cargá la lectura actual y calculá los kWh gastados por departamento</p></div>
+    <button class="btn pri" onclick="cargarLecturas()"><i class="ti ti-device-floppy"></i> Guardar lecturas</button>
+  </div>
+  <div class="card" style="max-width:700px;margin-bottom:1rem">
+    <div class="stl" style="margin-bottom:.8rem">Lecturas del período</div>
+    <div class="fg2" style="margin-bottom:1rem">
+      <div class="fg"><label>Fecha de lectura *</label><input id="med-fecha" type="date"></div>
+      <div class="fg"><label>Período (mes)</label><input id="med-periodo" type="month"></div>
+    </div>
+    <div id="med-tabla"></div>
+    <div id="med-resultado" style="display:none;margin-top:1rem;padding:12px 14px;background:var(--bg2);border-radius:var(--r)">
+      <div class="stl" style="margin-bottom:.5rem">Resultado — para copiar en la boleta de luz</div>
+      <div id="med-resumen" style="font-family:monospace;font-size:13px;line-height:1.8"></div>
+      <button class="btn sm" style="margin-top:8px" onclick="copiarResumen()"><i class="ti ti-copy"></i> Copiar</button>
+    </div>
+  </div>
+  <div class="card" style="max-width:700px">
+    <div class="stl" style="margin-bottom:.5rem">Historial de lecturas</div>
+    <div style="margin-bottom:8px;display:flex;gap:8px">
+      <select id="med-fil-dept" onchange="renderHistLecturas()" style="font-size:13px;padding:4px 8px;border-radius:var(--r);border:1px solid var(--brd)">
+        <option value="">Todos los deptos</option>
+      </select>
+    </div>
+    <div id="tbl-lecturas"><div class="ld"><span class="sp"></span>Cargando...</div></div>
+  </div>
+</div>
+
+<!-- HISTORIAL DE ALQUILERES -->
+<div id="page-hist-alquileres" class="page">
+  <div class="ph">
+    <div><h1>Historial de Alquileres</h1><p>Registro de cobros mensuales y aumentos IPC aplicados</p></div>
+  </div>
+  <div class="mg" style="margin-bottom:.8rem">
+    <div class="mt"><div class="mt-l">📋 Registros</div><div class="mt-v" id="ha-total">0</div></div>
+    <div class="mt"><div class="mt-l">🏠 Último aumento</div><div class="mt-v" id="ha-ultimo-aum">—</div></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:.8rem;flex-wrap:wrap">
+    <select id="ha-fil-dept" onchange="renderHistAlquileres()" style="font-size:13px;padding:4px 8px;border-radius:var(--r);border:1px solid var(--brd)">
+      <option value="">Todos los deptos</option>
+    </select>
+    <select id="ha-fil-tipo" onchange="renderHistAlquileres()" style="font-size:13px;padding:4px 8px;border-radius:var(--r);border:1px solid var(--brd)">
+      <option value="">Todo</option>
+      <option value="alquiler">Solo alquileres</option>
+      <option value="ipc">Solo aumentos IPC</option>
+    </select>
+  </div>
+  <div class="card"><div id="tbl-hist-alq"><div class="ld"><span class="sp"></span>Cargando...</div></div></div>
 </div>
 
 <!-- HISTORIAL DE BOLETAS -->
@@ -755,6 +814,34 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
 </div>
 
 </main>
+</div>
+
+<!-- ===== MODAL CALCULADOR IPC ===== -->
+<div class="mo" id="mo-ipc">
+<div class="mbox" style="max-width:520px">
+  <h2><i class="ti ti-trending-up"></i> Calculador de Aumento IPC</h2>
+  <input type="hidden" id="ipc-cont-id">
+  <input type="hidden" id="ipc-monto-ant">
+  <div id="ipc-info" style="padding:10px;background:var(--bg2);border-radius:var(--r);font-size:13px;margin-bottom:1rem"></div>
+  <p style="font-size:13px;color:var(--tx2);margin-bottom:.8rem">
+    Ingresá los IPC de los últimos 3 meses. El cálculo es acumulativo:<br>
+    <span style="font-size:12px;font-style:italic">Nuevo = Alquiler × (1+IPC1%) × (1+IPC2%) × (1+IPC3%)</span>
+  </p>
+  <div class="fg3">
+    <div class="fg"><label>IPC Mes 1 (%)</label><input id="ipc1" type="number" placeholder="Ej: 3.7" step="0.01" min="0" oninput="calcIPC()"></div>
+    <div class="fg"><label>IPC Mes 2 (%)</label><input id="ipc2" type="number" placeholder="Ej: 4.1" step="0.01" min="0" oninput="calcIPC()"></div>
+    <div class="fg"><label>IPC Mes 3 (%)</label><input id="ipc3" type="number" placeholder="Ej: 3.9" step="0.01" min="0" oninput="calcIPC()"></div>
+  </div>
+  <div id="ipc-resultado" style="display:none;margin:1rem 0;padding:12px 14px;background:var(--bg2);border-radius:var(--r)">
+    <div style="font-size:13px">Alquiler anterior: <strong id="ipc-ant">—</strong></div>
+    <div style="font-size:13px;margin-top:4px">Aumento acumulado: <strong id="ipc-pct-total" style="color:var(--acc)">—</strong></div>
+    <div style="font-size:18px;font-weight:700;margin-top:8px">Nuevo alquiler: <span id="ipc-nuevo" style="color:var(--greentx)">—</span></div>
+  </div>
+  <div class="mac">
+    <button class="btn" onclick="cm('mo-ipc')">Cancelar</button>
+    <button class="btn pri" id="ipc-aplicar-btn" onclick="aplicarIPC()" disabled><i class="ti ti-check"></i> Aplicar aumento al contrato</button>
+  </div>
+</div>
 </div>
 
 <!-- ===== MODAL DEPARTAMENTO ===== -->
@@ -1091,7 +1178,7 @@ function showPage(id, el) {
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id)?.classList.add('active');
   if (el) el.classList.add('active');
-  const fn = { dashboard:renderDash, departamentos:renderDepts, inquilinos:renderInqs, contratos:renderConts, 'datos-servicios':renderDatosServicios, 'cargar-boleta':renderCargarBoleta, historial:renderHistorial, cobros:renderCobros, pagos:()=>{ document.getElementById('pagos-periodo').value=mesActual(); renderPagos(); }, mantenimiento:renderMantPend };
+  const fn = { dashboard:renderDash, departamentos:renderDepts, inquilinos:renderInqs, contratos:renderConts, 'datos-servicios':renderDatosServicios, 'cargar-boleta':renderCargarBoleta, historial:renderHistorial, cobros:renderCobros, pagos:()=>{ document.getElementById('pagos-periodo').value=mesActual(); renderPagos(); }, medidores:renderMedidores, 'hist-alquileres':renderHistAlquileres, mantenimiento:renderMantPend };
   fn[id]?.();
 }
 function om(id) { document.getElementById(id).classList.add('open'); }
@@ -1982,6 +2069,8 @@ async function renderCobros(){
   if(!activos.length){el.innerHTML='<p style="color:var(--tx2);padding:.5rem 0">Sin contratos activos.</p>';return;}
   const servMes=servs.filter(s=>s.periodo===mes);
   const pagadosIds=new Set(pagos.filter(p=>p.estado==='pagado').map(p=>p.contrato_id));
+  const enviadosRaw = JSON.parse(localStorage.getItem('cuentas_enviadas')||'[]');
+  const enviadosSet = new Set(enviadosRaw);
   let totalGen=0;
   let h=`<table><thead><tr><th>Dpto</th><th>Inquilino</th><th>Alquiler</th><th>⚡ Luz</th><th>🔥 Gas</th><th>💧 Agua</th><th>🏛️ ARBA</th><th>🏙️ Mun.</th><th>🌐 Otros</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>`;
   activos.forEach(c=>{
@@ -2001,6 +2090,7 @@ async function renderCobros(){
     const total=c.monto+luz+gas+agua+abl+mun+otros;
     totalGen+=total;
     const pagado=pagadosIds.has(c.id);
+    const enviado=enviadosSet.has(c.id+'_'+mes);
     h+=`<tr style="${pagado?'opacity:.6':''}">
     <td><strong>${dept?dept.num:'?'}</strong></td>
     <td>${inq?inq.nombre+' '+inq.apellido:'?'}</td>
@@ -2015,10 +2105,22 @@ async function renderCobros(){
     <td>${pagado?'<span class="bdg green">✓ Pagado</span>':'<span class="bdg amber">Pendiente</span>'}</td>
     <td style="white-space:nowrap;display:flex;gap:4px">
       <button class="btn sm pri" onclick="verRecibo('${c.id}')" title="Ver cuenta detallada"><i class="ti ti-receipt"></i> Cuenta</button>
+      <button class="btn sm" onclick="enviarCuenta('${c.id}','${mes}',${total})" title="Enviar por mail" style="${enviado?'background:var(--greentx);color:white':''}"><i class="ti ti-mail"></i>${enviado?'<i class=\"ti ti-check\" style=\"margin-left:2px\"></i>':''}</button>
       ${!pagado?`<button class="btn sm suc" onclick="marcarPagadoDesde('${c.id}','${mes}',${total})"><i class="ti ti-check"></i> Pagado</button>`:`<button class="btn sm" onclick="verReciboPago('${c.id}','${mes}')"><i class="ti ti-file-check"></i> Recibo</button>`}
     </td></tr>`;
   });
   h+=`</tbody><tfoot><tr style="background:var(--bg2)"><td colspan="10" style="padding:9px;font-weight:600">Total general del mes</td><td style="padding:9px;font-weight:700;font-size:15px">${fmt(totalGen)}</td></tr></tfoot></table>`;
+  // ── Verificación: cobros vs boletas ──
+  const totalBoletas = servs.filter(s=>s.periodo===mes).reduce((a,s)=>a+parseFloat(s.total||0),0);
+  const diff = Math.abs(totalGen - totalBoletas);
+  const verif = diff < 1
+    ? `<span style="color:var(--greentx)">✅ Los cobros cuadran con las boletas</span>`
+    : `<span style="color:#c0392b">⚠️ Diferencia de ${fmt(diff)} — revisá las boletas</span>`;
+  h += `<div style="margin-top:.8rem;padding:12px 14px;background:var(--bg2);border-radius:var(--r);font-size:13px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+    <span>🧾 <strong>Total cobrado a inquilinos:</strong> ${fmt(totalGen)}</span>
+    <span>📄 <strong>Total boletas del mes:</strong> ${fmt(totalBoletas)}</span>
+    <span>${verif}</span>
+  </div>`;
   el.innerHTML=h;
 }
 
@@ -2099,7 +2201,8 @@ async function _buildRecibo(contId, mes, esPago){
       </div>
       <div style="text-align:right">
         <div style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#333">${docTipo}</div>
-        <div style="font-size:12px;color:#888;margin-top:2px">N° ${numDoc} · ${hoy}</div>
+        <div style="font-size:12px;color:#888;margin-top:2px">N° ${numDoc}</div>
+        <div style="font-size:12px;color:#888">Fecha de emisión: ${hoy}</div>
         <div style="font-size:13px;font-weight:600;color:#C0791A;margin-top:4px">Período: ${mesLabel}</div>
       </div>
     </div>
@@ -2196,6 +2299,7 @@ async function renderPagos(){
 async function marcarPagadoDesde(contId,per,total){
   await marcarPagado(contId,per,total);
   renderCobros();
+  registrarAlquilerHistorial(contId, mes, total);
 }
 async function marcarPagado(contId,per,total){
   const conts=await getConts();
@@ -2301,12 +2405,38 @@ async function renderDash(){
   document.getElementById('dash-sub').textContent=cfg.nombre||'Resumen general';
   // setup warning
   document.getElementById('setup-warn').innerHTML='';
-  // alerts contratos
+  // alerts contratos — vence en 90 días (3 meses) o menos
   const ab=document.getElementById('alerts-box'); ab.innerHTML='';
-  activos.filter(c=>{const d=dvenc(c.fecha_fin);return d>0&&d<=30;}).forEach(c=>{
-    const dept=depts.find(d=>d.id===c.dept_id), inq=inqs.find(i=>i.id===c.inq_id);
+  const hoyDate = new Date();
+  
+  // Contratos próximos a vencer (90 días)
+  activos.filter(c=>c.fecha_fin!=='2099-12-31').forEach(c=>{
     const dias=dvenc(c.fecha_fin);
-    ab.innerHTML+=`<div class="al ${dias<=7?'dan':'warn'}"><i class="ti ti-bell"></i><span>Contrato <strong>${dept?dept.num:'?'}</strong> — ${inq?inq.nombre+' '+inq.apellido:'?'} vence en <strong>${dias} días</strong> (${fmtD(c.fecha_fin)}). <button class="btn sm" onclick="abrirAum('${c.id}',${c.monto},${c.pct_aumento||0})" style="margin-left:7px">Aplicar aumento ↗</button></span></div>`;
+    if (dias <= 0 || dias > 90) return;
+    const dept=depts.find(d=>d.id===c.dept_id), inq=inqs.find(i=>i.id===c.inq_id);
+    const urgencia = dias<=30?'dan':'warn';
+    ab.innerHTML+=`<div class="al ${urgencia}"><i class="ti ti-calendar-event"></i><span>
+      📋 Contrato <strong>${dept?dept.num:'?'}</strong> — ${inq?inq.nombre+' '+inq.apellido:'?'} 
+      vence en <strong>${dias} días</strong> (${fmtD(c.fecha_fin)}).
+      ${dias<=30?'<strong>⚠️ Renovar urgente</strong>':'Preparar renovación'}
+    </span></div>`;
+  });
+
+  // Aviso aumento IPC (cada 3 meses desde fecha_inicio)
+  activos.filter(c=>c.monto>0&&c.rol!=='propietario'&&c.fecha_inicio).forEach(c=>{
+    const dept=depts.find(d=>d.id===c.dept_id), inq=inqs.find(i=>i.id===c.inq_id);
+    const inicio = new Date(c.fecha_inicio);
+    const mesesDesdeInicio = (hoyDate.getFullYear()-inicio.getFullYear())*12+(hoyDate.getMonth()-inicio.getMonth());
+    const proximoAumento = Math.ceil(mesesDesdeInicio/3)*3;
+    const mesesParaAumento = proximoAumento - mesesDesdeInicio;
+    if (mesesParaAumento <= 1) {
+      ab.innerHTML+=`<div class="al warn"><i class="ti ti-trending-up"></i><span>
+        📈 <strong>${dept?dept.num:'?'}</strong> — ${inq?inq.nombre+' '+inq.apellido:'?'}
+        — Corresponde aplicar <strong>aumento IPC</strong> (trimestre ${Math.floor(mesesDesdeInicio/3)+1}).
+        Alquiler actual: <strong>${fmt(c.monto)}</strong>
+        <button class="btn sm pri" onclick="abrirCalculadorIPC('${c.id}')" style="margin-left:7px">📊 Calcular IPC ↗</button>
+      </span></div>`;
+    }
   });
   // vencimientos contratos
   const dv=document.getElementById('dash-venc');
@@ -2318,16 +2448,16 @@ async function renderDash(){
     const dept=depts.find(d=>d.id===c.dept_id),inq=inqs.find(i=>i.id===c.inq_id),d=dvenc(c.fecha_fin);
     return `<div class="vb-row"><div><div style="font-size:13px;font-weight:500">${dept?dept.num:'?'}</div><div style="font-size:12px;color:var(--tx2)">${inq?inq.nombre+' '+inq.apellido:'?'}</div></div><span class="bdg ${d<=7?'red':'amber'}">${d}d — ${fmtD(c.fecha_fin)}</span></div>`;
   }).join('');
-  // vencimientos boletas
+  // boletas del mes — mostrar las del período actual (sin alerta de vencimiento, pago automático)
   const db=document.getElementById('dash-boletas');
-  const prox30=servs.filter(s=>s.fecha_vencimiento&&dvenc(s.fecha_vencimiento)<=30&&dvenc(s.fecha_vencimiento)>-3).sort((a,b)=>dvenc(a.fecha_vencimiento)-dvenc(b.fecha_vencimiento)).slice(0,6);
-  cntBoletas=servs.filter(s=>s.fecha_vencimiento&&dvenc(s.fecha_vencimiento)<=7&&dvenc(s.fecha_vencimiento)>-1).length;
-  if(!prox30.length) db.innerHTML='<p style="color:var(--tx2);font-size:13px">Sin boletas próximas a vencer</p>';
-  else db.innerHTML=prox30.map(s=>{
-    const ic={luz:'⚡',gas:'🔥',agua:'💧'};
-    const dias=dvenc(s.fecha_vencimiento);
-    const b=dias<=0?'gray':dias<=5?'red':dias<=10?'amber':'green';
-    return `<div class="vb-row"><div><div style="font-size:13px;font-weight:500">${ic[s.tipo]||''} ${(TIPO_LABEL[s.tipo]||s.tipo.charAt(0).toUpperCase()+s.tipo.slice(1))} — ${s.periodo}</div>${s.numero_boleta?`<div style="font-size:11px;color:var(--tx2)">N° ${s.numero_boleta}</div>`:''}</div><span class="bdg ${b}">${dias<=0?'Vencida':dias+'d — '+fmtD(s.fecha_vencimiento)}</span></div>`;
+  const mesAct = mesActual();
+  const boletasMes = servs.filter(s=>s.periodo===mesAct).sort((a,b)=>(TIPO_LABEL[a.tipo]||a.tipo).localeCompare(TIPO_LABEL[b.tipo]||b.tipo));
+  cntBoletas = servs.filter(s=>s.periodo===mesAct&&s.estado==='pendiente').length;
+  if(!boletasMes.length) db.innerHTML='<p style="color:var(--tx2);font-size:13px">Sin boletas cargadas para este mes</p>';
+  else db.innerHTML=boletasMes.map(s=>{
+    const bdg = s.estado==='pagada'?'green':s.estado==='vencida'?'red':'amber';
+    const estadoLabel = s.estado==='pagada'?'✅ Pagada':s.estado==='vencida'?'❌ Vencida':'⏳ Pendiente';
+    return `<div class="vb-row"><div><div style="font-size:13px;font-weight:500">${DS_ICONS[s.tipo]||''} ${(TIPO_LABEL[s.tipo]||s.tipo)} — ${fmt(s.total)}</div>${s.numero_boleta?`<div style="font-size:11px;color:var(--tx2)">Cta. ${s.numero_boleta}</div>`:''}</div><span class="bdg ${bdg}">${estadoLabel}</span></div>`;
   }).join('');
   // estado pagos
   const dp=document.getElementById('dash-pagos');
@@ -3067,8 +3197,24 @@ async function editDatoServ(id) {
 let _cbServicio = null; // dato del servicio seleccionado
 let _cbDepts = [];      // deptos del servicio
 
+function updatePeriodoCB() {
+  const desde = document.getElementById('cb-periodo-desde').value;
+  const hasta = document.getElementById('cb-periodo-hasta').value;
+  if (desde) {
+    // Set hidden periodo to year-month of 'desde' for filtering
+    document.getElementById('cb-periodo').value = desde.slice(0,7);
+  }
+}
+
 async function renderCargarBoleta() {
-  document.getElementById('cb-periodo').value = mesActual();
+  // Set default dates: from 10th of last month to 10th of current month
+  const hoy = new Date();
+  const mesAnt = new Date(hoy.getFullYear(), hoy.getMonth()-1, 10);
+  const mesAct = new Date(hoy.getFullYear(), hoy.getMonth(), 10);
+  const fmt2 = d => d.toISOString().slice(0,10);
+  document.getElementById('cb-periodo-desde').value = fmt2(mesAnt);
+  document.getElementById('cb-periodo-hasta').value = fmt2(mesAct);
+  document.getElementById('cb-periodo').value = mesAct.toISOString().slice(0,7);
   document.getElementById('cb-total').value = '';
   const kwhTotalEl = document.getElementById('cb-kwh-total'); if(kwhTotalEl) kwhTotalEl.value = '';
   window._cbDeptosVacios = [];
@@ -3167,6 +3313,34 @@ async function buildCBDistribucion() {
   }
   // Ocultar mensaje de pago único si no aplica
   if (unicoMsg) unicoMsg.style.display = 'none';
+  // MUNI TERRENO: mostrar info especial
+  const esMuniTerrenoUI = _cbServicio && (
+    (_cbServicio.cuenta && (_cbServicio.cuenta.includes('430458') && !_cbServicio.cuenta.includes('430459')))
+  );
+  let muniMsg = document.getElementById('cb-muni-msg');
+  if (!muniMsg) {
+    muniMsg = document.createElement('div');
+    muniMsg.id = 'cb-muni-msg';
+    muniMsg.style.cssText = 'padding:10px 14px;background:#e8f4f8;border-radius:var(--r);font-size:13px;margin-bottom:1rem';
+    blk.insertBefore(muniMsg, blk.children[1]);
+  }
+  if (esMuniTerrenoUI) {
+    muniMsg.style.display = '';
+    muniMsg.innerHTML = `<i class="ti ti-info-circle" style="color:var(--bluetx)"></i> 
+      <strong>Municipal Terreno:</strong> El 50% es del Tío (no se cobra). El otro 50% se divide entre los ${_cbDepts.length} deptos activos.
+      <span style="color:var(--tx2);margin-left:8px">Cada depto paga: <strong id="muni-por-depto">—</strong></span>`;
+    // Update per-dept amount when total changes
+    const updateMuniInfo = () => {
+      const t = parseFloat(document.getElementById('cb-total')?.value||0);
+      const n = _cbDepts.length;
+      if (t && n) document.getElementById('muni-por-depto').textContent = fmt(Math.round(t/2/n));
+    };
+    document.getElementById('cb-total')?.addEventListener('input', updateMuniInfo);
+    updateMuniInfo();
+    return; // No mostrar los bloques de distribución normales
+  } else {
+    muniMsg.style.display = 'none';
+  }
   if (tipo === 'luz' || distrib === 'medidor') {
     blkLuz.style.display = '';
     blkPct.style.display = 'none';
@@ -3294,19 +3468,34 @@ function recalcCB() {
     document.getElementById('cb-restante').textContent = fmt(total - distTotal);
   } else {
     const metodo = document.querySelector('input[name="cb-metodo"]:checked')?.value || 'pct';
-    let suma = 0;
-    _cbDepts.forEach(d => { suma += parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0); });
-    const factor = metodo === 'frac' ? suma : suma / 100;
-    let distTotal = 0;
-    _cbDepts.forEach(d => {
-      const v = parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0);
-      const m = total > 0 && factor > 0 ? Math.round((metodo==='frac'?v:v/100)*total/factor) : 0;
-      const el = document.getElementById('cb-monto-'+d.id);
-      if (el) el.value = m > 0 ? fmt(m) : '';
-      distTotal += m;
-    });
-    document.getElementById('cb-suma-pct').textContent = metodo==='igual' ? _cbDepts.length+' partes' : (metodo==='frac'?suma.toFixed(3):suma.toFixed(1)+'%');
-    document.getElementById('cb-dist-total2').textContent = fmt(distTotal);
+    // Para partes iguales, calcular y distribuir entre TODOS los deptos visibles (_cbDepts)
+    if (metodo === 'igual') {
+      const n = _cbDepts.length;
+      const montoIgual = total > 0 ? Math.round(total / n) : 0;
+      let distTotal = 0;
+      _cbDepts.forEach((d, i) => {
+        const m = i === n-1 ? total - montoIgual*(n-1) : montoIgual;
+        const el = document.getElementById('cb-monto-'+d.id);
+        if (el) el.value = m > 0 ? fmt(m) : '';
+        distTotal += m;
+      });
+      document.getElementById('cb-suma-pct').textContent = n + ' partes iguales';
+      document.getElementById('cb-dist-total2').textContent = fmt(distTotal);
+    } else {
+      let suma = 0;
+      _cbDepts.forEach(d => { suma += parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0); });
+      const factor = metodo === 'frac' ? suma : suma / 100;
+      let distTotal = 0;
+      _cbDepts.forEach(d => {
+        const v = parseFloat(document.getElementById('cb-pct-'+d.id)?.value||0);
+        const m = total > 0 && factor > 0 ? Math.round((metodo==='frac'?v:v/100)*total/factor) : 0;
+        const el = document.getElementById('cb-monto-'+d.id);
+        if (el) el.value = m > 0 ? fmt(m) : '';
+        distTotal += m;
+      });
+      document.getElementById('cb-suma-pct').textContent = metodo==='frac' ? suma.toFixed(3) : suma.toFixed(1)+'%';
+      document.getElementById('cb-dist-total2').textContent = fmt(distTotal);
+    }
   }
 }
 
@@ -3350,7 +3539,19 @@ async function guardarBoleta() {
 ¿Continuar?`;
     if (!confirm(confirmMsg)) return;
   }
-  if (distrib === 'unico') {
+  // MUNI TERRENO ESPECIAL: 50% tío (no se cobra), 50% entre los deptos activos
+  const esMuniTerreno = svKey === 'muni2';
+  if (esMuniTerreno) {
+    const mitad = Math.round(total / 2);
+    const n = deptosActivos.length;
+    if (n > 0) {
+      const porDepto = Math.round(mitad / n);
+      deptosActivos.forEach((d, i) => {
+        const monto = i === n-1 ? mitad - porDepto*(n-1) : porDepto;
+        distribucion[d.id] = {monto, pct: parseFloat((50/n).toFixed(2)), nota: '50% del total ÷ '+n};
+      });
+    }
+  } else if (distrib === 'unico') {
     // Pago único — primero, antes que cualquier otro chequeo de tipo
     // Asignar el total completo al depto configurado en el servicio
     if (_cbDepts.length > 0) distribucion[_cbDepts[0].id] = {monto: total, pct: 100};
@@ -3457,7 +3658,14 @@ async function guardarBoleta() {
     vto_real: venc || null,
     periodo_fact: esArbaAnual
       ? `Cuota 1/12 — Total anual: ${fmt(totalIngresado)}`
-      : (document.getElementById('cb-periodo-fact').value || periodo || null),
+      : (() => {
+          const desde = document.getElementById('cb-periodo-desde')?.value;
+          const hasta = document.getElementById('cb-periodo-hasta')?.value;
+          const manual = document.getElementById('cb-periodo-fact').value;
+          if (manual) return manual;
+          if (desde && hasta) return `${fmtD(desde)} al ${fmtD(hasta)}`;
+          return periodo || null;
+        })(),
     estado: 'pendiente',
     tipo: tipoRaw,
     detalle: esArbaAnual
@@ -3482,12 +3690,12 @@ async function renderServs() { return renderDatosServicios(); }
 
 const ACCESOS_DEFAULT = [
   { id:'edenor',    label:'⚡ Edenor',        url:'https://www.edenordigital.com/ingreso',                    usuario:'DATOSEIMPUESTOS@GMAIL.COM', clave:'puan5548',  nota:'' },
-  { id:'aysa',      label:'💧 AySA',          url:'https://portal.web.aysa.com.ar/index.html#/facturas',      usuario:'',                          clave:'',          nota:'' },
+  { id:'aysa',      label:'💧 AySA',          url:'https://portal.web.aysa.com.ar/index.html#/facturas',      usuario:'datoseimpuestos@gmail.com', clave:'Puan5548',  nota:'' },
   { id:'naturgy',   label:'🔥 Naturgy',       url:'https://ov.naturgy.com.ar/ingreso',                        usuario:'',                          clave:'',          nota:'' },
-  { id:'arba',      label:'📄 ARBA',          url:'https://web.arba.gov.ar/',                                 usuario:'datoseimpuestos@gmail.com', clave:'Puan5548',  nota:'Ingresar a PAGAR (arriba izq.) → SIN FACTURA' },
-  { id:'claro',     label:'🌐 Claro',         url:'https://miclaro.claro.com.ar/j6oOlp4nOtK5zsO1hoIqkw%3D%3D/home', usuario:'',             clave:'',          nota:'⚠️ Pagar antes del vencimiento' },
+  { id:'arba',      label:'📄 ARBA',          url:'https://web.arba.gov.ar/',                                 partida1:'', dv1:'', partida2:'', dv2:'', nota:'1) PAGAR (arriba izq) → SIN FACTURA → símbolo casa → INMOBILIARIO AZUL → cargar N° Partida sin barra. Tiene que ser VTO.' },
+  { id:'claro',     label:'🌐 Claro',         url:'https://miclaro.claro.com.ar/j6oOlp4nOtK5zsO1hoIqkw%3D%3D/home', usuario:'',             clave:'',          nota:'Pago automático tarjeta' },
   { id:'netflix',   label:'📺 Netflix',       url:'https://www.netflix.com/BillingActivity',                  usuario:'',                          clave:'0103JOSE',  nota:'' },
-  { id:'municipal', label:'🏛️ Municipal TSG', url:'https://portalvecino.tresdefebrero.gov.ar/consulta#',      usuario:'',                          clave:'',          nota:'Tasa por Servicios Generales (TSG) — ⚠️ Pagar antes del vencimiento' },
+  { id:'municipal', label:'🏛️ Municipal TSG', url:'https://portalvecino.tresdefebrero.gov.ar/consulta#',      partida1:'430459/5', cuenta1:'', partida2:'430458/1', cuenta2:'', nota:'Tasa por Servicios Generales (TSG) — Pago automático tarjeta' },
 ];
 
 async function getAccesos() {
@@ -3532,26 +3740,38 @@ async function renderDashAccesos() {
   const el = document.getElementById('dash-accesos');
   if (!el) return;
   const accesos = await getAccesos();
-  let h = `<div style="overflow-x:auto"><table style="min-width:600px;font-size:13px">
+  let h = `<div style="overflow-x:auto"><table style="min-width:500px;font-size:13px">
     <thead><tr>
       <th style="width:120px">Servicio</th>
-      <th>Link</th>
-      <th style="width:180px">Usuario</th>
-      <th style="width:120px">Contraseña</th>
-      <th>Notas / Aclaraciones</th>
+      <th style="width:130px">Link</th>
+      <th>Usuario / Contraseña / Partidas</th>
+      <th>Notas</th>
     </tr></thead><tbody>`;
   accesos.forEach(a => {
+    // Columna de credenciales según tipo de servicio
+    let credHTML = '';
+    if (a.id === 'arba') {
+      credHTML = `<span style="font-size:11px">
+        ${a.partida1?`Partida 1: <strong>${a.partida1}</strong> DV: <strong>${a.dv1||'—'}</strong><br>`:''}
+        ${a.partida2?`Partida 2: <strong>${a.partida2}</strong> DV: <strong>${a.dv2||'—'}</strong>`:''}
+      </span>`;
+    } else if (a.id === 'municipal') {
+      credHTML = `<span style="font-size:11px">
+        ${a.partida1?`Partida 1: <strong>${a.partida1}</strong> Cta: <strong>${a.cuenta1||'—'}</strong><br>`:''}
+        ${a.partida2?`Partida 2: <strong>${a.partida2}</strong> Cta: <strong>${a.cuenta2||'—'}</strong>`:''}
+      </span>`;
+    } else {
+      credHTML = `<div style="font-size:12px;color:var(--tx2)">${a.usuario||'—'}</div>
+        <span class="clave-mask" data-val="${a.clave||''}" onclick="toggleClave(this)" style="cursor:pointer;font-size:12px;letter-spacing:2px;color:var(--tx2)" title="Click para ver/ocultar">
+          ${a.clave ? '••••••••' : '—'}
+        </span>`;
+    }
     h += `<tr>
       <td><strong>${a.label}</strong></td>
       <td><a href="${a.url}" target="_blank" style="color:var(--acc);text-decoration:none;display:flex;align-items:center;gap:4px">
         <i class="ti ti-external-link" style="font-size:12px"></i> Abrir portal
       </a></td>
-      <td style="font-size:12px;color:var(--tx2)">${a.usuario||'—'}</td>
-      <td>
-        <span class="clave-mask" data-val="${a.clave||''}" onclick="toggleClave(this)" style="cursor:pointer;font-size:12px;letter-spacing:2px;color:var(--tx2)" title="Click para ver/ocultar">
-          ${a.clave ? '••••••••' : '—'}
-        </span>
-      </td>
+      <td>${credHTML}</td>
       <td style="font-size:12px;color:var(--tx2)">${a.nota||'—'}</td>
     </tr>`;
   });
@@ -3578,26 +3798,41 @@ async function editarAccesos() {
   const rows = document.getElementById('accesos-form-rows');
   rows.innerHTML = '';
   accesos.forEach((a, i) => {
+    let extraFields = '';
+    if (a.id === 'arba') {
+      extraFields = `
+        <div class="fg2" style="margin:6px 0 0">
+          <div class="fg" style="margin:0"><label style="font-size:11px">Partida 1</label><input id="ac-p1-${i}" type="text" value="${a.partida1||''}" style="font-size:12px" placeholder="Ej: 117006516"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">DV 1</label><input id="ac-dv1-${i}" type="text" value="${a.dv1||''}" style="font-size:12px" placeholder="Ej: 2"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Partida 2</label><input id="ac-p2-${i}" type="text" value="${a.partida2||''}" style="font-size:12px" placeholder="Ej: 117007302"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">DV 2</label><input id="ac-dv2-${i}" type="text" value="${a.dv2||''}" style="font-size:12px" placeholder="Ej: 5"></div>
+        </div>`;
+    } else if (a.id === 'municipal') {
+      extraFields = `
+        <div class="fg2" style="margin:6px 0 0">
+          <div class="fg" style="margin:0"><label style="font-size:11px">Partida 1</label><input id="ac-p1-${i}" type="text" value="${a.partida1||''}" style="font-size:12px" placeholder="Ej: 430459/5"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Cuenta 1</label><input id="ac-c1-${i}" type="text" value="${a.cuenta1||''}" style="font-size:12px"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Partida 2</label><input id="ac-p2-${i}" type="text" value="${a.partida2||''}" style="font-size:12px" placeholder="Ej: 430458/1"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Cuenta 2</label><input id="ac-c2-${i}" type="text" value="${a.cuenta2||''}" style="font-size:12px"></div>
+        </div>`;
+    } else {
+      extraFields = `
+        <div class="fg2" style="margin:6px 0 0">
+          <div class="fg" style="margin:0"><label style="font-size:11px">Usuario / Email</label><input id="ac-usr-${i}" type="text" value="${a.usuario||''}" style="font-size:12px"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Contraseña</label><input id="ac-clave-${i}" type="text" value="${a.clave||''}" style="font-size:12px"></div>
+        </div>`;
+    }
     rows.innerHTML += `
     <div style="background:var(--bg2);border-radius:var(--r);padding:10px 14px">
       <div style="font-weight:600;margin-bottom:8px">${a.label}</div>
-      <div class="fg3">
-        <div class="fg" style="margin:0">
-          <label style="font-size:11px">URL</label>
-          <input id="ac-url-${i}" type="text" value="${a.url||''}" style="font-size:12px">
-        </div>
-        <div class="fg" style="margin:0">
-          <label style="font-size:11px">Usuario / Email</label>
-          <input id="ac-usr-${i}" type="text" value="${a.usuario||''}" style="font-size:12px">
-        </div>
-        <div class="fg" style="margin:0">
-          <label style="font-size:11px">Contraseña</label>
-          <input id="ac-clave-${i}" type="text" value="${a.clave||''}" style="font-size:12px">
-        </div>
+      <div class="fg" style="margin:0">
+        <label style="font-size:11px">URL</label>
+        <input id="ac-url-${i}" type="text" value="${a.url||''}" style="font-size:12px">
       </div>
+      ${extraFields}
       <div class="fg" style="margin:6px 0 0">
-        <label style="font-size:11px">Notas / Aclaraciones</label>
-        <input id="ac-nota-${i}" type="text" value="${a.nota||''}" style="font-size:12px" placeholder="Ej: Pagar antes del vencimiento, acceder desde sección X...">
+        <label style="font-size:11px">Notas</label>
+        <input id="ac-nota-${i}" type="text" value="${a.nota||''}" style="font-size:12px">
       </div>
     </div>`;
   });
@@ -3614,15 +3849,36 @@ async function guardarAccesos() {
   const ids = JSON.parse(rows.dataset.ids||'[]');
   const labels = JSON.parse(rows.dataset.labels||'[]');
   const accesos = [];
+  const tiposEspeciales = ['arba', 'municipal'];
   for (let i = 0; i < n; i++) {
-    accesos.push({
-      id: ids[i],
+    const id = ids[i];
+    const base = {
+      id,
       label: labels[i],
       url: document.getElementById('ac-url-'+i)?.value||'',
-      usuario: document.getElementById('ac-usr-'+i)?.value||'',
-      clave: document.getElementById('ac-clave-'+i)?.value||'',
       nota: document.getElementById('ac-nota-'+i)?.value||'',
-    });
+    };
+    if (id === 'arba') {
+      Object.assign(base, {
+        partida1: document.getElementById('ac-p1-'+i)?.value||'',
+        dv1: document.getElementById('ac-dv1-'+i)?.value||'',
+        partida2: document.getElementById('ac-p2-'+i)?.value||'',
+        dv2: document.getElementById('ac-dv2-'+i)?.value||'',
+      });
+    } else if (id === 'municipal') {
+      Object.assign(base, {
+        partida1: document.getElementById('ac-p1-'+i)?.value||'',
+        cuenta1: document.getElementById('ac-c1-'+i)?.value||'',
+        partida2: document.getElementById('ac-p2-'+i)?.value||'',
+        cuenta2: document.getElementById('ac-c2-'+i)?.value||'',
+      });
+    } else {
+      Object.assign(base, {
+        usuario: document.getElementById('ac-usr-'+i)?.value||'',
+        clave: document.getElementById('ac-clave-'+i)?.value||'',
+      });
+    }
+    accesos.push(base);
   }
   await saveAccesos(accesos);
   cm('mo-accesos');
@@ -3659,6 +3915,430 @@ function setDCBadge(id, count) {
   }
 }
 
+
+// ════════════════════════════════════════════════════
+//  CALCULADOR IPC
+// ════════════════════════════════════════════════════
+
+async function abrirCalculadorIPC(contId) {
+  const conts = await getConts();
+  const depts = await getDepts();
+  const inqs = await getInqs();
+  const c = conts.find(x=>x.id===contId);
+  if (!c) return;
+  const dept = depts.find(d=>d.id===c.dept_id);
+  const inq = inqs.find(i=>i.id===c.inq_id);
+  document.getElementById('ipc-cont-id').value = contId;
+  document.getElementById('ipc-monto-ant').value = c.monto;
+  document.getElementById('ipc-info').innerHTML = `
+    <strong>Depto ${dept?dept.num:'?'}</strong> — ${inq?inq.nombre+' '+inq.apellido:'?'}<br>
+    Alquiler actual: <strong>${fmt(c.monto)}</strong> | 
+    Inicio contrato: <strong>${fmtD(c.fecha_inicio)}</strong>
+  `;
+  document.getElementById('ipc1').value = '';
+  document.getElementById('ipc2').value = '';
+  document.getElementById('ipc3').value = '';
+  document.getElementById('ipc-resultado').style.display = 'none';
+  document.getElementById('ipc-aplicar-btn').disabled = true;
+  om('mo-ipc');
+}
+
+function calcIPC() {
+  const monto = parseFloat(document.getElementById('ipc-monto-ant').value)||0;
+  const i1 = parseFloat(document.getElementById('ipc1').value)||0;
+  const i2 = parseFloat(document.getElementById('ipc2').value)||0;
+  const i3 = parseFloat(document.getElementById('ipc3').value)||0;
+  if (!monto || (!i1 && !i2 && !i3)) {
+    document.getElementById('ipc-resultado').style.display = 'none';
+    document.getElementById('ipc-aplicar-btn').disabled = true;
+    return;
+  }
+  const nuevo = Math.round(monto * (1+i1/100) * (1+i2/100) * (1+i3/100));
+  const pctTotal = ((nuevo/monto - 1)*100).toFixed(2);
+  document.getElementById('ipc-ant').textContent = fmt(monto);
+  document.getElementById('ipc-pct-total').textContent = '+' + pctTotal + '%';
+  document.getElementById('ipc-nuevo').textContent = fmt(nuevo);
+  document.getElementById('ipc-resultado').style.display = '';
+  document.getElementById('ipc-aplicar-btn').disabled = false;
+}
+
+async function aplicarIPC() {
+  const contId = document.getElementById('ipc-cont-id').value;
+  const monto = parseFloat(document.getElementById('ipc-monto-ant').value)||0;
+  const i1 = parseFloat(document.getElementById('ipc1').value)||0;
+  const i2 = parseFloat(document.getElementById('ipc2').value)||0;
+  const i3 = parseFloat(document.getElementById('ipc3').value)||0;
+  const nuevo = Math.round(monto * (1+i1/100) * (1+i2/100) * (1+i3/100));
+  if (!confirm(`¿Confirmar nuevo alquiler de ${fmt(nuevo)}?`)) return;
+  if (sb) {
+    const {error} = await sb.from('contratos').update({monto: nuevo}).eq('id', contId);
+    if (error) { alert('Error: '+error.message); return; }
+  } else {
+    const all = lsGet('conts');
+    const c = all.find(x=>x.id===contId);
+    if (c) { c.monto = nuevo; lsUpsert('conts', c); }
+  }
+  cm('mo-ipc');
+  renderConts();
+  renderDash();
+  alert(`✅ Alquiler actualizado a ${fmt(nuevo)}`);
+}
+
+// ════════════════════════════════════════════════════
+//  ENVIAR CUENTA POR MAIL
+// ════════════════════════════════════════════════════
+
+async function enviarCuenta(contId, mes, total) {
+  const [conts, depts, inqs] = await Promise.all([getConts(), getDepts(), getInqs()]);
+  const c = conts.find(x=>x.id===contId);
+  if (!c) return;
+  const dept = depts.find(d=>d.id===c.dept_id);
+  const inq = inqs.find(i=>i.id===c.inq_id);
+  const emailInq = inq?.email || '';
+  const emailAdmin = 'datoseimpuestos@gmail.com';
+  const asunto = encodeURIComponent(`Cuenta ${mes} — Depto ${dept?dept.num:'?'} — ${fmt(total)}`);
+  const cuerpo = encodeURIComponent(
+    `Hola ${inq?inq.nombre:''},
+
+` +
+    `Te enviamos la cuenta del período ${mes}:
+
+` +
+    `Departamento: ${dept?dept.num:'?'}
+` +
+    `Total a pagar: ${fmt(total)}
+
+` +
+    `Ante cualquier consulta no dudes en comunicarte.
+
+` +
+    `Administración Puan 5548/5554`
+  );
+  // Abrir cliente de mail con dos destinatarios
+  const mailto = `mailto:${emailInq}?cc=${emailAdmin}&subject=${asunto}&body=${cuerpo}`;
+  window.open(mailto);
+  // Marcar como enviado
+  const key = contId+'_'+mes;
+  const enviados = JSON.parse(localStorage.getItem('cuentas_enviadas')||'[]');
+  if (!enviados.includes(key)) enviados.push(key);
+  localStorage.setItem('cuentas_enviadas', JSON.stringify(enviados));
+  renderCobros();
+}
+
+// ════════════════════════════════════════════════════
+//  MEDIDORES kWh
+// ════════════════════════════════════════════════════
+
+async function getLecturas(deptId=null) {
+  if (!sb) {
+    const all = lsGet('lecturas');
+    return deptId ? all.filter(x=>x.dept_id===deptId) : all;
+  }
+  let q = sb.from('lecturas_medidores').select('*').order('fecha',{ascending:false});
+  if (deptId) q = q.eq('dept_id', deptId);
+  const {data,error} = await q;
+  if (error) { console.error('getLecturas:', error.message); return []; }
+  return data||[];
+}
+
+async function renderMedidores() {
+  // Poblar selector de depto en historial
+  const depts = await getDepts();
+  // Solo deptos con medidor individual (los que están en el servicio de luz Edenor 8397487966)
+  const allDS = await getDatosServs();
+  const edenor3 = allDS.find(ds=>ds.tipo==='luz'&&ds.cuenta&&ds.cuenta.includes('8397487966'));
+  const deptsMedidor = edenor3
+    ? (edenor3.dept_ids||[]).map(did=>depts.find(d=>d.id===did)).filter(Boolean)
+    : depts.filter(d=>d.estado==='ocupado');
+
+  const sel = document.getElementById('med-fil-dept');
+  sel.innerHTML = '<option value="">Todos</option>';
+  deptsMedidor.forEach(d => {
+    sel.innerHTML += `<option value="${d.id}">Depto ${d.num}</option>`;
+  });
+
+  // Set default date and periodo
+  const hoy = new Date().toISOString().slice(0,10);
+  document.getElementById('med-fecha').value = hoy;
+  document.getElementById('med-periodo').value = mesActual();
+
+  // Build input table for each dept
+  let h = '<table><thead><tr><th>Depto</th><th>Lectura anterior</th><th>Lectura actual *</th><th>kWh gastados</th></tr></thead><tbody>';
+  const lecturas = await getLecturas();
+
+  for (const d of deptsMedidor) {
+    // Get last reading for this dept
+    const ultimaLec = lecturas.filter(l=>l.dept_id===d.id).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha))[0];
+    const ultVal = ultimaLec ? ultimaLec.lectura : '—';
+    const ultFecha = ultimaLec ? ` (${fmtD(ultimaLec.fecha)})` : '';
+    h += `<tr>
+      <td><strong>Depto ${d.num}</strong></td>
+      <td style="font-size:12px;color:var(--tx2)">${ultVal}${ultFecha}</td>
+      <td><input id="med-act-${d.id}" type="number" placeholder="Lectura actual" min="0" step="0.1"
+        data-ant="${ultimaLec?ultimaLec.lectura:''}" data-dept="${d.id}" data-num="${d.num}"
+        oninput="calcKwh('${d.id}')" style="width:130px"></td>
+      <td><strong id="med-kwh-${d.id}" style="color:var(--acc)">—</strong></td>
+    </tr>`;
+  }
+  h += '</tbody></table>';
+  document.getElementById('med-tabla').innerHTML = h;
+  document.getElementById('med-resultado').style.display = 'none';
+  renderHistLecturas();
+}
+
+function calcKwh(deptId) {
+  const input = document.getElementById('med-act-'+deptId);
+  const actual = parseFloat(input.value||0);
+  const anterior = parseFloat(input.dataset.ant||0);
+  const kwh = anterior > 0 ? Math.round((actual-anterior)*10)/10 : null;
+  const el = document.getElementById('med-kwh-'+deptId);
+  if (kwh !== null && actual > 0) {
+    el.textContent = kwh > 0 ? kwh + ' kWh' : '⚠️ Menor que anterior';
+    el.style.color = kwh > 0 ? 'var(--acc)' : '#c0392b';
+  } else {
+    el.textContent = '—';
+  }
+  // Actualizar resumen
+  updateResumenMedidores();
+}
+
+function updateResumenMedidores() {
+  const inputs = document.querySelectorAll('[id^="med-act-"]');
+  let lines = [];
+  let hayDatos = false;
+  inputs.forEach(inp => {
+    const actual = parseFloat(inp.value||0);
+    const anterior = parseFloat(inp.dataset.ant||0);
+    const num = inp.dataset.num;
+    if (actual > 0) {
+      hayDatos = true;
+      const kwh = anterior > 0 ? Math.round((actual-anterior)*10)/10 : 0;
+      lines.push(`Depto ${num}: ${kwh} kWh (anterior: ${anterior} → actual: ${actual})`);
+    }
+  });
+  if (hayDatos) {
+    document.getElementById('med-resultado').style.display = '';
+    document.getElementById('med-resumen').innerHTML = lines.join('<br>');
+  } else {
+    document.getElementById('med-resultado').style.display = 'none';
+  }
+}
+
+function copiarResumen() {
+  const text = document.getElementById('med-resumen').innerText;
+  navigator.clipboard.writeText(text).then(()=>alert('✅ Copiado al portapapeles'));
+}
+
+async function cargarLecturas() {
+  const fecha = document.getElementById('med-fecha').value;
+  const periodo = document.getElementById('med-periodo').value;
+  if (!fecha) { alert('Ingresá la fecha de lectura'); return; }
+  const inputs = document.querySelectorAll('[id^="med-act-"]');
+  let guardados = 0;
+  for (const inp of inputs) {
+    const actual = parseFloat(inp.value||0);
+    if (!actual) continue;
+    const anterior = parseFloat(inp.dataset.ant||0);
+    const kwh = anterior > 0 ? Math.round((actual-anterior)*10)/10 : 0;
+    const lectura = {
+      id: uid(),
+      dept_id: inp.dataset.id || inp.id.replace('med-act-',''),
+      dept_num: inp.dataset.num,
+      fecha,
+      lectura: actual,
+      kwh_gastados: kwh,
+      periodo
+    };
+    // Fix: get dept_id from input
+    lectura.dept_id = inp.getAttribute('data-dept') || inp.id.replace('med-act-','');
+    if (sb) {
+      const {error} = await sb.from('lecturas_medidores').insert(lectura);
+      if (error) { console.error('cargarLectura:', error.message); continue; }
+    } else {
+      lsUpsert('lecturas', lectura);
+    }
+    guardados++;
+  }
+  alert(`✅ ${guardados} lectura(s) guardadas`);
+  renderMedidores();
+}
+
+async function renderHistLecturas() {
+  const el = document.getElementById('tbl-lecturas');
+  const deptFil = document.getElementById('med-fil-dept')?.value||'';
+  el.innerHTML = '<div class="ld"><span class="sp"></span>Cargando...</div>';
+  const lecturas = await getLecturas(deptFil||null);
+  if (!lecturas.length) { el.innerHTML = '<p style="color:var(--tx2);font-size:13px">Sin lecturas guardadas</p>'; return; }
+  let h = '<table><thead><tr><th>Fecha</th><th>Depto</th><th>Lectura</th><th>kWh gastados</th><th>Período</th><th></th></tr></thead><tbody>';
+  lecturas.slice(0,50).forEach(l => {
+    h += `<tr>
+      <td>${fmtD(l.fecha)}</td>
+      <td><strong>Depto ${l.dept_num||l.dept_id}</strong></td>
+      <td style="font-family:monospace">${l.lectura}</td>
+      <td style="color:var(--acc);font-weight:600">${l.kwh_gastados||'—'} kWh</td>
+      <td style="font-size:12px;color:var(--tx2)">${l.periodo||'—'}</td>
+      <td><button class="btn xs dan" onclick="delLectura('${l.id}')"><i class="ti ti-trash"></i></button></td>
+    </tr>`;
+  });
+  el.innerHTML = h + '</tbody></table>';
+}
+
+async function delLectura(id) {
+  if (!confirm('¿Eliminar esta lectura?')) return;
+  if (sb) await sb.from('lecturas_medidores').delete().eq('id', id);
+  else lsDel('lecturas', id);
+  renderMedidores();
+}
+
+// ════════════════════════════════════════════════════
+//  HISTORIAL DE ALQUILERES
+// ════════════════════════════════════════════════════
+
+async function getHistAlq(deptId=null) {
+  if (!sb) return lsGet('hist_alq');
+  let q = sb.from('historial_alquileres').select('*').order('periodo',{ascending:false});
+  if (deptId) q = q.eq('dept_id', deptId);
+  const {data,error} = await q;
+  if (error) { console.error('getHistAlq:', error.message); return []; }
+  return data||[];
+}
+
+async function renderHistAlquileres() {
+  const el = document.getElementById('tbl-hist-alq');
+  el.innerHTML = '<div class="ld"><span class="sp"></span>Cargando...</div>';
+  const [depts, conts, inqs] = await Promise.all([getDepts(), getConts(), getInqs()]);
+  
+  // Poblar selector depto
+  const sel = document.getElementById('ha-fil-dept');
+  if (sel.options.length <= 1) {
+    conts.filter(c=>c.estado==='activo'&&c.rol!=='propietario').forEach(c => {
+      const d = depts.find(x=>x.id===c.dept_id);
+      if (d) sel.innerHTML += `<option value="${c.dept_id}">Depto ${d.num}</option>`;
+    });
+  }
+
+  const deptFil = document.getElementById('ha-fil-dept')?.value||'';
+  const tipoFil = document.getElementById('ha-fil-tipo')?.value||'';
+
+  // Combinar historial de alquileres + historial IPC
+  let alqs = await getHistAlq(deptFil||null);
+  let ipcs = [];
+  if (sb) {
+    let q = sb.from('historial_ipc').select('*').order('fecha',{ascending:false});
+    if (deptFil) {
+      const cont = conts.find(c=>c.dept_id===deptFil&&c.estado==='activo');
+      if (cont) q = q.eq('contrato_id', cont.id);
+    }
+    const {data} = await q;
+    ipcs = data||[];
+  }
+
+  if (tipoFil === 'ipc') alqs = [];
+  if (tipoFil === 'alquiler') ipcs = [];
+
+  document.getElementById('ha-total').textContent = alqs.length + ipcs.length;
+  if (ipcs.length) {
+    const ultimo = ipcs[0];
+    document.getElementById('ha-ultimo-aum').textContent = `${fmtD(ultimo.fecha)} — +${ultimo.pct_total}%`;
+  }
+
+  if (!alqs.length && !ipcs.length) {
+    el.innerHTML = '<p style="color:var(--tx2);font-size:13px">Sin registros. Los alquileres se registran automáticamente al marcar como pagado.</p>';
+    return;
+  }
+
+  let h = '<table><thead><tr><th>Período</th><th>Depto</th><th>Inquilino</th><th>Tipo</th><th>Monto</th><th>Detalle</th></tr></thead><tbody>';
+  
+  // Alquileres
+  alqs.forEach(a => {
+    const dept = depts.find(d=>d.id===a.dept_id);
+    const cont = conts.find(c=>c.dept_id===a.dept_id&&c.estado==='activo');
+    const inq = cont ? inqs.find(i=>i.id===cont.inq_id) : null;
+    h += `<tr>
+      <td>${a.periodo||'—'}</td>
+      <td><strong>Depto ${dept?dept.num:'?'}</strong></td>
+      <td style="font-size:12px">${inq?inq.nombre+' '+inq.apellido:'—'}</td>
+      <td><span class="bdg blue">🏠 Alquiler</span></td>
+      <td><strong>${fmt(a.monto)}</strong></td>
+      <td style="font-size:12px;color:var(--tx2)">${a.detalle||'—'}</td>
+    </tr>`;
+  });
+
+  // Aumentos IPC
+  ipcs.forEach(i => {
+    const cont = conts.find(c=>c.id===i.contrato_id);
+    const dept = cont ? depts.find(d=>d.id===cont.dept_id) : null;
+    const inq = cont ? inqs.find(x=>x.id===cont.inq_id) : null;
+    h += `<tr style="background:var(--amber-bg,#fffbeb)">
+      <td>${fmtD(i.fecha)}</td>
+      <td><strong>Depto ${dept?dept.num:'?'}</strong></td>
+      <td style="font-size:12px">${inq?inq.nombre+' '+inq.apellido:'—'}</td>
+      <td><span class="bdg amber">📈 Aumento IPC</span></td>
+      <td><strong>${fmt(i.monto_anterior)} → ${fmt(i.monto_nuevo)}</strong></td>
+      <td style="font-size:12px;color:var(--tx2)">IPC: ${i.ipc1}% + ${i.ipc2}% + ${i.ipc3}% = +${i.pct_total}%</td>
+    </tr>`;
+  });
+
+  el.innerHTML = h + '</tbody></table>';
+}
+
+// Guardar historial alquiler cuando se marca como pagado
+async function registrarAlquilerHistorial(contId, mes, monto) {
+  const conts = await getConts();
+  const c = conts.find(x=>x.id===contId);
+  if (!c || c.rol==='propietario' || !monto) return;
+  const reg = {
+    id: uid(),
+    contrato_id: contId,
+    dept_id: c.dept_id,
+    periodo: mes,
+    monto,
+    tipo: 'alquiler',
+    detalle: ''
+  };
+  if (sb) {
+    await sb.from('historial_alquileres').upsert(reg);
+  } else {
+    lsUpsert('hist_alq', reg);
+  }
+}
+
+// Patch aplicarIPC to also save to historial_ipc
+const _aplicarIPCOrig = aplicarIPC;
+async function aplicarIPC() {
+  const contId = document.getElementById('ipc-cont-id').value;
+  const montoAnt = parseFloat(document.getElementById('ipc-monto-ant').value)||0;
+  const i1 = parseFloat(document.getElementById('ipc1').value)||0;
+  const i2 = parseFloat(document.getElementById('ipc2').value)||0;
+  const i3 = parseFloat(document.getElementById('ipc3').value)||0;
+  const nuevo = Math.round(montoAnt * (1+i1/100) * (1+i2/100) * (1+i3/100));
+  const pctTotal = parseFloat(((nuevo/montoAnt-1)*100).toFixed(2));
+  if (!confirm(`¿Confirmar nuevo alquiler de ${fmt(nuevo)}?`)) return;
+  // Guardar en contratos
+  if (sb) {
+    await sb.from('contratos').update({monto: nuevo}).eq('id', contId);
+  } else {
+    const all = lsGet('conts');
+    const c = all.find(x=>x.id===contId);
+    if (c) { c.monto = nuevo; lsUpsert('conts', c); }
+  }
+  // Guardar en historial_ipc
+  const ipcReg = {
+    id: uid(),
+    contrato_id: contId,
+    fecha: new Date().toISOString().slice(0,10),
+    monto_anterior: montoAnt,
+    monto_nuevo: nuevo,
+    ipc1: i1, ipc2: i2, ipc3: i3,
+    pct_total: pctTotal
+  };
+  if (sb) await sb.from('historial_ipc').insert(ipcReg);
+  else lsUpsert('hist_ipc', ipcReg);
+  cm('mo-ipc');
+  renderConts();
+  renderDash();
+  alert(`✅ Alquiler actualizado a ${fmt(nuevo)} (+${pctTotal}%)`);
+}
 </script>
 </body>
 </html>
