@@ -2104,7 +2104,8 @@ async function renderCobros(){
     <td style="font-weight:700">${fmt(total)}</td>
     <td>${pagado?'<span class="bdg green">✓ Pagado</span>':'<span class="bdg amber">Pendiente</span>'}</td>
     <td style="white-space:nowrap;display:flex;gap:4px">
-      <button class="btn sm pri" onclick="verRecibo('${c.id}')" title="Ver cuenta detallada"><i class="ti ti-receipt"></i> Cuenta</button>
+      <button class="btn sm" onclick="verReciboServicios('${c.id}')" title="Cuenta de servicios" style="font-size:11px"><i class="ti ti-bolt"></i> Servicios</button>
+      <button class="btn sm pri" onclick="verReciboAlquiler('${c.id}')" title="Cuenta de alquiler" style="font-size:11px"><i class="ti ti-home"></i> Alquiler</button>
       <button class="btn sm" onclick="enviarCuenta('${c.id}','${mes}',${total})" title="Enviar por mail" style="${enviado?'background:var(--greentx);color:white':''}"><i class="ti ti-mail"></i>${enviado?'<i class=\"ti ti-check\" style=\"margin-left:2px\"></i>':''}</button>
       ${!pagado?`<button class="btn sm suc" onclick="marcarPagadoDesde('${c.id}','${mes}',${total})"><i class="ti ti-check"></i> Pagado</button>`:`<button class="btn sm" onclick="verReciboPago('${c.id}','${mes}')"><i class="ti ti-file-check"></i> Recibo</button>`}
     </td></tr>`;
@@ -2126,16 +2127,26 @@ async function renderCobros(){
 
 async function verRecibo(contId){
   const mes=mesActual();
-  await _buildRecibo(contId, mes, false);
+  await _buildRecibo(contId, mes, false, 'ambos');
+  om('mo-recibo');
+}
+async function verReciboServicios(contId){
+  const mes=mesActual();
+  await _buildRecibo(contId, mes, false, 'servicios');
+  om('mo-recibo');
+}
+async function verReciboAlquiler(contId){
+  const mes=mesActual();
+  await _buildRecibo(contId, mes, false, 'alquiler');
   om('mo-recibo');
 }
 
 async function verReciboPago(contId, mes){
-  await _buildRecibo(contId, mes, true);
+  await _buildRecibo(contId, mes, true, 'ambos');
   om('mo-recibo');
 }
 
-async function _buildRecibo(contId, mes, esPago){
+async function _buildRecibo(contId, mes, esPago, modo='ambos'){
   const [conts,depts,inqs,servs,pagos]=await Promise.all([getConts(),getDepts(),getInqs(),getServs(),getPagos(mes)]);
   const c=conts.find(x=>x.id===contId);if(!c)return;
   const dept=depts.find(d=>d.id===c.dept_id);
@@ -2145,7 +2156,9 @@ async function _buildRecibo(contId, mes, esPago){
   const cfg=gc();
   const hoy=new Date().toLocaleDateString('es-AR');
 
-  let rows = c.monto > 0 ? `<tr style="border-bottom:1px solid #eee">
+  const mostrarAlq = modo === 'ambos' || modo === 'alquiler';
+  const mostrarServ = modo === 'ambos' || modo === 'servicios';
+  let rows = (mostrarAlq && c.monto > 0) ? `<tr style="border-bottom:1px solid #eee">
     <td style="padding:8px 10px">🏠 Alquiler mensual</td>
     <td style="padding:8px 10px;text-align:center;color:#666">—</td>
     <td style="padding:8px 10px;text-align:right;font-weight:600">${fmt(c.monto)}</td>
@@ -2153,7 +2166,7 @@ async function _buildRecibo(contId, mes, esPago){
   let totalServ=0;
   const tipoIcon={luz:'⚡',gas:'🔥',agua:'💧',abl:'🏛️',arba:'📄',municipal:'🏙️',bomba:'💡',internet:'🌐',streaming:'📺'};
   const tipoLabel={luz:'Luz',gas:'Gas',agua:'Agua',abl:'ARBA',arba:'ARBA',municipal:'Imp. Municipal',bomba:'Bomba de agua',internet:'Internet',streaming:'Streaming'};
-  servMes.forEach(s=>{
+  if (mostrarServ) { servMes.forEach(s=>{
     const dist=s.distribucion?.[c.dept_id];
     if(!dist||!dist.monto)return;
     const ncMap={luz:dept?.nc_luz,gas:dept?.nc_gas,agua:dept?.nc_agua,abl:dept?.nc_abl,municipal:dept?.nc_municipal};
@@ -2173,8 +2186,10 @@ async function _buildRecibo(contId, mes, esPago){
       </tr>`;
     });
     totalServ+=dist.monto;
-  });
-  const total=c.monto+totalServ;
+  }); } // end forEach + if mostrarServ
+  const total = modo === 'alquiler' ? c.monto
+              : modo === 'servicios' ? totalServ
+              : c.monto + totalServ;
   rows+=`<tr style="background:#C0791A;color:white">
     <td style="padding:10px;font-weight:700;font-size:14px;border-radius:0 0 0 4px" colspan="2">${esPago?'TOTAL PAGADO':'TOTAL A PAGAR'}</td>
     <td style="padding:10px;text-align:right;font-weight:700;font-size:16px;border-radius:0 0 4px 0">${fmt(total)}</td>
@@ -2187,7 +2202,10 @@ async function _buildRecibo(contId, mes, esPago){
     </div>`:'';
 
   const mesLabel = mes ? (() => { const [y,m]=mes.split('-'); const meses=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']; return `${meses[parseInt(m)]} ${y}`; })() : mes;
-  const docTipo = esPago ? 'RECIBO DE PAGO' : 'CUENTA MENSUAL';
+  const docTipo = esPago ? 'RECIBO DE PAGO'
+    : modo === 'alquiler' ? 'CUENTA DE ALQUILER'
+    : modo === 'servicios' ? 'CUENTA DE SERVICIOS'
+    : 'CUENTA MENSUAL';
   const numDoc = Date.now().toString().slice(-6);
 
   document.getElementById('recibo-html').innerHTML=`
