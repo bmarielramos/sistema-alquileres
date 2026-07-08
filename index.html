@@ -3645,11 +3645,15 @@ async function guardarBoleta() {
     if (svKey === null) svKey = tipo;
   }
   // UN SOLO OBJETO — se guarda una sola vez en historial_boletas
+  const periodoDesde = document.getElementById('cb-periodo-desde')?.value || null;
+  const periodoHasta = document.getElementById('cb-periodo-hasta')?.value || null;
   const boleta = {
     id: boletaId,
     servicio: svKey,
     tipo,
     periodo: periodo,
+    periodo_desde: periodoDesde,
+    periodo_hasta: periodoHasta,
     monto: total,
     metodo: (tipo==='luz'||distrib==='medidor')?'kw':'porcentaje',
     distribucion,
@@ -3692,10 +3696,10 @@ const ACCESOS_DEFAULT = [
   { id:'edenor',    label:'⚡ Edenor',        url:'https://www.edenordigital.com/ingreso',                    usuario:'DATOSEIMPUESTOS@GMAIL.COM', clave:'puan5548',  nota:'' },
   { id:'aysa',      label:'💧 AySA',          url:'https://portal.web.aysa.com.ar/index.html#/facturas',      usuario:'datoseimpuestos@gmail.com', clave:'Puan5548',  nota:'' },
   { id:'naturgy',   label:'🔥 Naturgy',       url:'https://ov.naturgy.com.ar/ingreso',                        usuario:'',                          clave:'',          nota:'' },
-  { id:'arba',      label:'📄 ARBA',          url:'https://web.arba.gov.ar/',                                 partida1:'', dv1:'', partida2:'', dv2:'', nota:'1) PAGAR (arriba izq) → SIN FACTURA → símbolo casa → INMOBILIARIO AZUL → cargar N° Partida sin barra. Tiene que ser VTO.' },
+  { id:'arba',      label:'📄 ARBA',          url:'https://web.arba.gov.ar/',                                 usuario:'datoseimpuestos@gmail.com', clave:'Puan5548', partida_1:'', cuenta_1:'', partida_2:'', cuenta_2:'', nota:'1) PAGAR (arriba izq) → SIN FACTURA → símbolo casa → INMOBILIARIO AZUL → cargar N° Partida sin barra. Tiene que ser VTO.' },
   { id:'claro',     label:'🌐 Claro',         url:'https://miclaro.claro.com.ar/j6oOlp4nOtK5zsO1hoIqkw%3D%3D/home', usuario:'',             clave:'',          nota:'Pago automático tarjeta' },
   { id:'netflix',   label:'📺 Netflix',       url:'https://www.netflix.com/BillingActivity',                  usuario:'',                          clave:'0103JOSE',  nota:'' },
-  { id:'municipal', label:'🏛️ Municipal TSG', url:'https://portalvecino.tresdefebrero.gov.ar/consulta#',      partida1:'430459/5', cuenta1:'', partida2:'430458/1', cuenta2:'', nota:'Tasa por Servicios Generales (TSG) — Pago automático tarjeta' },
+  { id:'municipal', label:'🏛️ Municipal TSG', url:'https://portalvecino.tresdefebrero.gov.ar/consulta#',      cuenta_1:'430459/5', digito_verificador_1:'', cuenta_2:'430458/1', digito_verificador_2:'', nota:'Tasa por Servicios Generales (TSG) — Pago automático tarjeta' },
 ];
 
 async function getAccesos() {
@@ -3752,13 +3756,15 @@ async function renderDashAccesos() {
     let credHTML = '';
     if (a.id === 'arba') {
       credHTML = `<span style="font-size:11px">
-        ${a.partida1?`Partida 1: <strong>${a.partida1}</strong> DV: <strong>${a.dv1||'—'}</strong><br>`:''}
-        ${a.partida2?`Partida 2: <strong>${a.partida2}</strong> DV: <strong>${a.dv2||'—'}</strong>`:''}
+        ${a.usuario?`<span style="color:var(--tx2)">Usuario: ${a.usuario}</span><br>`:''}
+        ${a.clave?`Clave: <span class="clave-mask" data-val="${a.clave}" onclick="toggleClave(this)" style="cursor:pointer;letter-spacing:2px" title="Click para ver">••••••</span><br>`:''}
+        ${a.partida_1?`Partida 1: <strong>${a.partida_1}</strong> Cta: <strong>${a.cuenta_1||'—'}</strong><br>`:''}
+        ${a.partida_2?`Partida 2: <strong>${a.partida_2}</strong> Cta: <strong>${a.cuenta_2||'—'}</strong>`:''}
       </span>`;
     } else if (a.id === 'municipal') {
       credHTML = `<span style="font-size:11px">
-        ${a.partida1?`Partida 1: <strong>${a.partida1}</strong> Cta: <strong>${a.cuenta1||'—'}</strong><br>`:''}
-        ${a.partida2?`Partida 2: <strong>${a.partida2}</strong> Cta: <strong>${a.cuenta2||'—'}</strong>`:''}
+        ${a.cuenta_1?`Cuenta 1: <strong>${a.cuenta_1}</strong> DV: <strong>${a.digito_verificador_1||'—'}</strong><br>`:''}
+        ${a.cuenta_2?`Cuenta 2: <strong>${a.cuenta_2}</strong> DV: <strong>${a.digito_verificador_2||'—'}</strong>`:''}
       </span>`;
     } else {
       credHTML = `<div style="font-size:12px;color:var(--tx2)">${a.usuario||'—'}</div>
@@ -3802,18 +3808,22 @@ async function editarAccesos() {
     if (a.id === 'arba') {
       extraFields = `
         <div class="fg2" style="margin:6px 0 0">
-          <div class="fg" style="margin:0"><label style="font-size:11px">Partida 1</label><input id="ac-p1-${i}" type="text" value="${a.partida1||''}" style="font-size:12px" placeholder="Ej: 117006516"></div>
-          <div class="fg" style="margin:0"><label style="font-size:11px">DV 1</label><input id="ac-dv1-${i}" type="text" value="${a.dv1||''}" style="font-size:12px" placeholder="Ej: 2"></div>
-          <div class="fg" style="margin:0"><label style="font-size:11px">Partida 2</label><input id="ac-p2-${i}" type="text" value="${a.partida2||''}" style="font-size:12px" placeholder="Ej: 117007302"></div>
-          <div class="fg" style="margin:0"><label style="font-size:11px">DV 2</label><input id="ac-dv2-${i}" type="text" value="${a.dv2||''}" style="font-size:12px" placeholder="Ej: 5"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Usuario</label><input id="ac-usr-${i}" type="text" value="${a.usuario||''}" style="font-size:12px"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Contraseña</label><input id="ac-clave-${i}" type="text" value="${a.clave||''}" style="font-size:12px"></div>
+        </div>
+        <div class="fg2" style="margin:6px 0 0">
+          <div class="fg" style="margin:0"><label style="font-size:11px">Partida 1</label><input id="ac-p1-${i}" type="text" value="${a.partida_1||''}" style="font-size:12px" placeholder="Ej: 117006516"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Cuenta 1</label><input id="ac-c1-${i}" type="text" value="${a.cuenta_1||''}" style="font-size:12px" placeholder="Ej: 2"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Partida 2</label><input id="ac-p2-${i}" type="text" value="${a.partida_2||''}" style="font-size:12px" placeholder="Ej: 117007302"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Cuenta 2</label><input id="ac-c2-${i}" type="text" value="${a.cuenta_2||''}" style="font-size:12px" placeholder="Ej: 5"></div>
         </div>`;
     } else if (a.id === 'municipal') {
       extraFields = `
         <div class="fg2" style="margin:6px 0 0">
-          <div class="fg" style="margin:0"><label style="font-size:11px">Partida 1</label><input id="ac-p1-${i}" type="text" value="${a.partida1||''}" style="font-size:12px" placeholder="Ej: 430459/5"></div>
-          <div class="fg" style="margin:0"><label style="font-size:11px">Cuenta 1</label><input id="ac-c1-${i}" type="text" value="${a.cuenta1||''}" style="font-size:12px"></div>
-          <div class="fg" style="margin:0"><label style="font-size:11px">Partida 2</label><input id="ac-p2-${i}" type="text" value="${a.partida2||''}" style="font-size:12px" placeholder="Ej: 430458/1"></div>
-          <div class="fg" style="margin:0"><label style="font-size:11px">Cuenta 2</label><input id="ac-c2-${i}" type="text" value="${a.cuenta2||''}" style="font-size:12px"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Cuenta 1</label><input id="ac-c1-${i}" type="text" value="${a.cuenta_1||''}" style="font-size:12px" placeholder="Ej: 430459/5"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Dígito verif. 1</label><input id="ac-dv1-${i}" type="text" value="${a.digito_verificador_1||''}" style="font-size:12px"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Cuenta 2</label><input id="ac-c2-${i}" type="text" value="${a.cuenta_2||''}" style="font-size:12px" placeholder="Ej: 430458/1"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Dígito verif. 2</label><input id="ac-dv2-${i}" type="text" value="${a.digito_verificador_2||''}" style="font-size:12px"></div>
         </div>`;
     } else {
       extraFields = `
@@ -3860,17 +3870,19 @@ async function guardarAccesos() {
     };
     if (id === 'arba') {
       Object.assign(base, {
-        partida1: document.getElementById('ac-p1-'+i)?.value||'',
-        dv1: document.getElementById('ac-dv1-'+i)?.value||'',
-        partida2: document.getElementById('ac-p2-'+i)?.value||'',
-        dv2: document.getElementById('ac-dv2-'+i)?.value||'',
+        usuario: document.getElementById('ac-usr-'+i)?.value||'',
+        clave: document.getElementById('ac-clave-'+i)?.value||'',
+        partida_1: document.getElementById('ac-p1-'+i)?.value||'',
+        cuenta_1: document.getElementById('ac-c1-'+i)?.value||'',
+        partida_2: document.getElementById('ac-p2-'+i)?.value||'',
+        cuenta_2: document.getElementById('ac-c2-'+i)?.value||'',
       });
     } else if (id === 'municipal') {
       Object.assign(base, {
-        partida1: document.getElementById('ac-p1-'+i)?.value||'',
-        cuenta1: document.getElementById('ac-c1-'+i)?.value||'',
-        partida2: document.getElementById('ac-p2-'+i)?.value||'',
-        cuenta2: document.getElementById('ac-c2-'+i)?.value||'',
+        cuenta_1: document.getElementById('ac-c1-'+i)?.value||'',
+        digito_verificador_1: document.getElementById('ac-dv1-'+i)?.value||'',
+        cuenta_2: document.getElementById('ac-c2-'+i)?.value||'',
+        digito_verificador_2: document.getElementById('ac-dv2-'+i)?.value||'',
       });
     } else {
       Object.assign(base, {
