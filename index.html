@@ -2156,6 +2156,53 @@ async function renderCobros(){
       ${!pagado?`<button class="btn sm suc" onclick="marcarPagadoDesde('${c.id}','${mes}',${total})"><i class="ti ti-check"></i> Pagado</button>`:`<button class="btn sm" onclick="verReciboPago('${c.id}','${mes}')"><i class="ti ti-file-check"></i> Recibo</button>`}
     </td></tr>`;
   });
+  // ── DEPARTAMENTOS VACÍOS — gastos a cargo de la administración ──
+  const deptosVacantes = depts.filter(d => {
+    const tieneContrato = activos.find(c => c.dept_id === d.id);
+    return !tieneContrato && d.num !== 'D1' && d.num !== 'D2' && d.num !== 'D3' && d.num !== 'D4';
+  });
+
+  let totalAdmin = 0;
+  if (deptosVacantes.length > 0) {
+    h += `<tr><td colspan="12" style="padding:6px 10px;background:#fff3cd;font-size:12px;font-weight:600;color:#856404">
+      🏢 GASTOS DE ADMINISTRACIÓN — Departamentos vacíos
+    </td></tr>`;
+
+    deptosVacantes.forEach(dept => {
+      let luz=0,gas=0,agua=0,abl=0,mun=0,otros=0;
+      servMes.forEach(s => {
+        const v = parseFloat(s.distribucion?.[dept.id]?.monto||0);
+        if (!v) return;
+        if(s.tipo==='luz'||s.tipo==='bomba') luz+=v;
+        else if(s.tipo==='gas') gas+=v;
+        else if(s.tipo==='agua') agua+=v;
+        else if(['abl','arba','abl_anual'].includes(s.tipo)||['arba'].includes(s.servicio)) abl+=v;
+        else if(s.tipo==='municipal'||['muni1','muni2'].includes(s.servicio)) mun+=v;
+        else otros+=v;
+      });
+      const totalDepto = luz+gas+agua+abl+mun+otros;
+      if (totalDepto === 0) return;
+      totalAdmin += totalDepto;
+      totalGen += totalDepto;
+      h += `<tr style="background:#fffbeb">
+        <td><strong>${dept.num}</strong></td>
+        <td style="font-size:12px;color:#856404"><i>Vacío — a cargo de Administración</i></td>
+        <td><span style="color:var(--tx3)">—</span></td>
+        <td>${luz>0?fmt(luz):'<span style="color:var(--tx3)">—</span>'}</td>
+        <td>${gas>0?fmt(gas):'<span style="color:var(--tx3)">—</span>'}</td>
+        <td>${agua>0?fmt(agua):'<span style="color:var(--tx3)">—</span>'}</td>
+        <td>${abl>0?fmt(abl):'<span style="color:var(--tx3)">—</span>'}</td>
+        <td>${mun>0?fmt(mun):'<span style="color:var(--tx3)">—</span>'}</td>
+        <td>${otros>0?fmt(otros):'<span style="color:var(--tx3)">—</span>'}</td>
+        <td style="font-weight:700;color:#856404">${fmt(totalDepto)}</td>
+        <td><span class="bdg amber">Admin</span></td>
+        <td style="white-space:nowrap">
+          <button class="btn sm" onclick="verReciboAdmin('${dept.id}','${dept.num}')" style="font-size:11px"><i class="ti ti-receipt"></i> Ver</button>
+        </td>
+      </tr>`;
+    });
+  }
+
   h+=`</tbody><tfoot><tr style="background:var(--bg2)"><td colspan="10" style="padding:9px;font-weight:600">Total general del mes</td><td style="padding:9px;font-weight:700;font-size:15px">${fmt(totalGen)}</td></tr></tfoot></table>`;
   // ── Verificación: cobros vs boletas ──
   // Comparar solo servicios (excluir alquiler de ambos lados)
@@ -4667,6 +4714,81 @@ function buildHDistribObject() {
     });
   }
   return Object.keys(distribucion).length > 0 ? distribucion : null;
+}
+
+// ════════════════════════════════════════════════════
+//  RECIBO ADMINISTRACIÓN (depto vacío)
+// ════════════════════════════════════════════════════
+async function verReciboAdmin(deptId, deptNum) {
+  const mes = mesActual();
+  const servs = await getServs();
+  const servMes = servs.filter(s => s.periodo === mes);
+  const hoy = new Date().toLocaleDateString('es-AR');
+  const numDoc = Date.now().toString().slice(-6);
+  const mesLabel = (() => {
+    const [y,m] = mes.split('-');
+    const meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    return meses[parseInt(m)] + ' ' + y;
+  })();
+
+  const tipoIcon = {luz:'⚡',gas:'🔥',agua:'💧',abl:'🏛️',arba:'📄',municipal:'🏙️',bomba:'💡',internet:'🌐',streaming:'📺'};
+  const tipoLabel = {luz:'Luz',gas:'Gas',agua:'Agua',abl:'ARBA',arba:'ARBA',municipal:'Imp. Municipal',bomba:'Bomba de agua',internet:'Internet',streaming:'Streaming'};
+
+  let rows = '';
+  let total = 0;
+  servMes.forEach(s => {
+    const dist = s.distribucion?.[deptId];
+    if (!dist || !dist.monto) return;
+    rows += `<tr style="border-bottom:1px solid #eee">
+      <td style="padding:8px 10px">${tipoIcon[s.tipo]||''} ${tipoLabel[s.tipo]||s.tipo}</td>
+      <td style="padding:8px 10px;text-align:center;color:#666;font-size:12px">${dist.pct?dist.pct+'%':dist.kw?dist.kw+' kWh':'—'}</td>
+      <td style="padding:8px 10px;text-align:right;font-weight:600">${fmt(dist.monto)}</td>
+    </tr>`;
+    total += dist.monto;
+  });
+
+  if (!rows) { alert('No hay gastos para este departamento en el período actual.'); return; }
+
+  rows += `<tr style="background:#C0791A;color:white">
+    <td style="padding:10px;font-weight:700;font-size:14px;border-radius:0 0 0 4px" colspan="2">TOTAL A CARGO DE ADMINISTRACIÓN</td>
+    <td style="padding:10px;text-align:right;font-weight:700;font-size:16px;border-radius:0 0 4px 0">${fmt(total)}</td>
+  </tr>`;
+
+  document.getElementById('recibo-html').innerHTML = `
+  <div style="font-family:'Segoe UI',Arial,sans-serif;color:#222;max-width:580px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #C0791A;padding-bottom:14px;margin-bottom:16px">
+      <div>
+        <div style="font-size:20px;font-weight:700;color:#C0791A">Puan 5548 / 5554</div>
+        <div style="font-size:12px;color:#666">Administración de Alquileres</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:700">GASTOS DE ADMINISTRACIÓN</div>
+        <div style="font-size:12px;color:#888">N° ${numDoc}</div>
+        <div style="font-size:12px;color:#888">Fecha de emisión: ${hoy}</div>
+        <div style="font-size:13px;color:#C0791A;font-weight:600">Período: ${mesLabel}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:#f9f9f9;padding:12px;border-radius:6px">
+        <div style="font-size:11px;color:#888;margin-bottom:4px">UNIDAD</div>
+        <div style="font-weight:700">Departamento ${deptNum}</div>
+        <div style="font-size:12px;color:#856404;margin-top:4px">⚠️ Vacío — sin inquilino</div>
+      </div>
+      <div style="background:#fff3cd;padding:12px;border-radius:6px">
+        <div style="font-size:11px;color:#856404;margin-bottom:4px">A CARGO DE</div>
+        <div style="font-weight:700;color:#856404">Administración Puan</div>
+        <div style="font-size:12px;color:#856404">Mientras el depto esté vacío</div>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:#f5f5f5">
+        <th style="padding:8px 10px;text-align:left;font-size:12px">CONCEPTO</th>
+        <th style="padding:8px 10px;text-align:center;font-size:12px">DETALLE</th>
+        <th style="padding:8px 10px;text-align:right;font-size:12px">IMPORTE</th>
+      </thead><tbody>${rows}</tbody>
+    </table>
+  </div>`;
+  om('mo-recibo');
 }
 </script>
 </body>
