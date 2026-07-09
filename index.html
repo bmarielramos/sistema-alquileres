@@ -3315,12 +3315,9 @@ let _cbServicio = null; // dato del servicio seleccionado
 let _cbDepts = [];      // deptos del servicio
 
 function updatePeriodoCB() {
-  const desde = document.getElementById('cb-periodo-desde').value;
-  const hasta = document.getElementById('cb-periodo-hasta').value;
-  if (desde) {
-    // Set hidden periodo to year-month of 'desde' for filtering
-    document.getElementById('cb-periodo').value = desde.slice(0,7);
-  }
+  // El período de cobro SIEMPRE es el mes actual — no cambia por el desde/hasta
+  // Los campos desde/hasta son solo informativos (período de la factura)
+  document.getElementById('cb-periodo').value = mesActual();
 }
 
 async function renderCargarBoleta() {
