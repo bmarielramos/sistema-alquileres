@@ -473,14 +473,12 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
         </select>
       </div>
       <div class="fg">
-        <label>Período desde *</label>
-        <input id="cb-periodo-desde" type="date" onchange="updatePeriodoCB()">
-      </div>
-      <div class="fg">
-        <label>Período hasta *</label>
-        <input id="cb-periodo-hasta" type="date" onchange="updatePeriodoCB()">
+        <label>Mes de cobro</label>
+        <div id="cb-mes-cobro" style="padding:8px 12px;background:var(--acc-light,#fde8cc);border-radius:var(--r);font-weight:600;color:var(--acc);font-size:14px">—</div>
       </div>
       <input id="cb-periodo" type="hidden">
+      <input id="cb-periodo-desde" type="hidden">
+      <input id="cb-periodo-hasta" type="hidden">
     </div>
     <!-- Info de la cuenta seleccionada -->
     <div id="cb-info-cuenta" style="display:none;margin-bottom:1rem;padding:10px 14px;background:var(--bg2);border-radius:var(--r);font-size:13px"></div>
@@ -491,6 +489,14 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
       <div class="fg">
         <label>Monto total ($) *</label>
         <input id="cb-total" type="number" placeholder="0" min="0" step="0.01" oninput="recalcCB()">
+      </div>
+      <div class="fg">
+        <label>Período factura desde</label>
+        <input id="cb-periodo-desde" type="date">
+      </div>
+      <div class="fg">
+        <label>Período factura hasta</label>
+        <input id="cb-periodo-hasta" type="date">
       </div>
       <div class="fg">
         <label>Vencimiento real boleta</label>
@@ -3328,7 +3334,15 @@ async function renderCargarBoleta() {
   const fmt2 = d => d.toISOString().slice(0,10);
   document.getElementById('cb-periodo-desde').value = fmt2(mesAnt);
   document.getElementById('cb-periodo-hasta').value = fmt2(mesAct);
-  document.getElementById('cb-periodo').value = mesAct.toISOString().slice(0,7);
+  document.getElementById('cb-periodo').value = mesActual();
+  // Mostrar mes de cobro en el indicador
+  const mesLabel = (() => {
+    const [y,m] = mesActual().split('-');
+    const meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    return meses[parseInt(m)] + ' ' + y;
+  })();
+  const mesCobro = document.getElementById('cb-mes-cobro');
+  if (mesCobro) mesCobro.textContent = mesLabel;
   document.getElementById('cb-total').value = '';
   const kwhTotalEl = document.getElementById('cb-kwh-total'); if(kwhTotalEl) kwhTotalEl.value = '';
   window._cbDeptosVacios = [];
