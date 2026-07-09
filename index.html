@@ -419,6 +419,19 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
       <input id="ds-dia-venc" type="number" placeholder="Ej: 10" min="1" max="31">
     </div>
   </div>
+  <div class="fg2">
+    <div class="fg">
+      <label>🔄 Modalidad de reparto</label>
+      <select id="ds-tipo-reparto" style="border:2px solid var(--acc)">
+        <option value="consumo">Por consumo — excluye deptos vacíos (luz, gas, agua, internet)</option>
+        <option value="fijo">Cargo fijo por unidad — se cobra aunque esté vacío (ARBA, Municipal)</option>
+      </select>
+    </div>
+    <div class="fg" style="font-size:12px;color:var(--tx2);padding-top:22px">
+      <strong>Consumo:</strong> si un depto queda vacío, su parte no se cobra a nadie.<br>
+      <strong>Fijo:</strong> siempre se cobra, incluso con depto vacío.
+    </div>
+  </div>
   <div class="fg">
     <label>Notas / Observaciones</label>
     <textarea id="ds-notas" rows="2" placeholder="Ej: Desde 2026 es mensual (antes bimestral). Medidor 1=Maria, 2=Rocio..."></textarea>
@@ -3122,6 +3135,7 @@ async function abrirDatoServ(item=null) {
   _dsPctFijo = item?.pct_fijo || {};
   document.getElementById('ds-dia-venc').value = item?.dia_venc || '';
   document.getElementById('ds-notas').value = item?.notas || '';
+  document.getElementById('ds-tipo-reparto').value = item?.tipo_reparto || 'consumo';
   document.getElementById('mo-dato-serv-title').innerHTML = item
     ? '<i class="ti ti-edit"></i> Editar Servicio'
     : '<i class="ti ti-database"></i> Nuevo Servicio';
@@ -3156,6 +3170,7 @@ async function guardarDatoServ() {
     distrib,
     pct_fijo,
     dia_venc: parseInt(document.getElementById('ds-dia-venc').value) || null,
+    tipo_reparto: document.getElementById('ds-tipo-reparto').value || 'consumo',
     notas: document.getElementById('ds-notas').value || '',
   };
   await saveDatoServ(ds);
@@ -3201,7 +3216,12 @@ async function renderDatosServicios() {
       <td>${ds.empresa||'—'}</td>
       <td style="font-size:12px">${ds.titular||'—'}</td>
       <td style="font-size:12px">${deptNums||'—'}</td>
-      <td style="font-size:12px">${distribLabel[ds.distrib]||ds.distrib}</td>
+      <td style="font-size:12px">
+        ${distribLabel[ds.distrib]||ds.distrib}
+        <span class="bdg ${ds.tipo_reparto==='fijo'?'amber':'blue'}" style="margin-left:4px;font-size:10px">
+          ${ds.tipo_reparto==='fijo'?'Cargo fijo':'Por consumo'}
+        </span>
+      </td>
       <td style="font-size:12px">${ds.dia_venc?'Día '+ds.dia_venc:'—'}</td>
       <td style="white-space:nowrap">
         <button class="btn xs" onclick="editDatoServ('${ds.id}')"><i class="ti ti-edit"></i></button>
@@ -3292,16 +3312,22 @@ async function cargarInfoCuenta() {
   _cbServicio = ds;
   const depts = await getDepts();
   const todosLosDeptos = (ds.dept_ids||[]).map(did=>depts.find(d=>d.id===did)).filter(Boolean);
-  // Filtrar solo deptos con contrato activo (Opción A)
-  // Para pago único no filtrar
+  // Filtrar deptos según modalidad de reparto
+  const tipoReparto = ds.tipo_reparto || 'consumo';
+  window._cbTipoReparto = tipoReparto;
   if (ds.distrib === 'unico' || ds.distrib === 'medidor') {
-    _cbDepts = todosLosDeptos; // medidor: cada uno tiene su lectura real
+    _cbDepts = todosLosDeptos; // medidor: lectura real por depto / único: depto fijo
+    window._cbDeptosVacios = [];
+  } else if (tipoReparto === 'fijo') {
+    // Cargo fijo (ARBA, Municipal): incluir TODOS aunque estén vacíos
+    _cbDepts = todosLosDeptos;
+    window._cbDeptosVacios = [];
   } else {
+    // Por consumo (luz, gas, agua): solo deptos con contrato activo
     const contsActivos = await getConts();
     const idsActivos = new Set(contsActivos.filter(c=>c.estado==='activo').map(c=>c.dept_id));
     const vacios = todosLosDeptos.filter(d=>!idsActivos.has(d.id));
     _cbDepts = todosLosDeptos.filter(d=>idsActivos.has(d.id));
-    // Guardar referencia a los vacíos para mostrar en el aviso
     window._cbDeptosVacios = vacios;
   }
   const distribLabel = {medidor:'Por medidor individual (kWh)','partes-iguales':'Partes iguales',porcentaje:'Por porcentaje',unico:'Pago único (no se divide)'};
@@ -3550,25 +3576,28 @@ async function guardarBoleta() {
   // OPCIÓN A: filtrar solo deptos con contrato activo en el período
   // ══════════════════════════════════════════════════
   const conts = await getConts();
+  const tipoRepartoActual = window._cbTipoReparto || _cbServicio?.tipo_reparto || 'consumo';
   const deptoIdsConContrato = new Set(
-    conts
-      .filter(c => c.estado === 'activo')
-      .map(c => c.dept_id)
+    conts.filter(c => c.estado === 'activo').map(c => c.dept_id)
   );
-  // Para pago único no filtrar — se asigna completo al depto configurado
-  const deptosActivos = distrib === 'unico'
-    ? _cbDepts
-    : _cbDepts.filter(d => deptoIdsConContrato.has(d.id));
-  const deptosVacios = _cbDepts.filter(d => !deptoIdsConContrato.has(d.id));
-  if (deptosVacios.length > 0 && distrib !== 'unico' && distrib !== 'medidor') {
-    const nombres = deptosVacios.map(d => 'Depto ' + d.num).join(', ');
-    const confirmMsg = `⚠️ ${nombres} no tiene contrato activo y será excluido del reparto.
+  let deptosActivos;
+  if (tipoRepartoActual === 'fijo' || distrib === 'unico') {
+    // Cargo fijo o pago único: usar todos los deptos del servicio
+    deptosActivos = _cbDepts;
+  } else {
+    // Por consumo: solo deptos con contrato activo
+    deptosActivos = _cbDepts.filter(d => deptoIdsConContrato.has(d.id));
+    const deptosVacios = _cbDepts.filter(d => !deptoIdsConContrato.has(d.id));
+    if (deptosVacios.length > 0 && distrib !== 'medidor') {
+      const nombres = deptosVacios.map(d => 'Depto ' + d.num).join(', ');
+      const confirmMsg = `⚠️ ${nombres} no tiene contrato activo y será excluido del reparto.
 
 ` +
-      `El gasto se dividirá entre ${deptosActivos.length} depto(s) ocupado(s).
+        `El gasto se dividirá entre ${deptosActivos.length} depto(s) ocupado(s).
 
 ¿Continuar?`;
-    if (!confirm(confirmMsg)) return;
+      if (!confirm(confirmMsg)) return;
+    }
   }
   // MUNI TERRENO ESPECIAL: 50% tío (no se cobra), 50% entre los deptos activos
   const esMuniTerreno = svKey === 'muni2';
