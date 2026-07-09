@@ -2112,13 +2112,17 @@ async function renderCobros(){
   });
   h+=`</tbody><tfoot><tr style="background:var(--bg2)"><td colspan="10" style="padding:9px;font-weight:600">Total general del mes</td><td style="padding:9px;font-weight:700;font-size:15px">${fmt(totalGen)}</td></tr></tfoot></table>`;
   // ── Verificación: cobros vs boletas ──
+  // Comparar solo servicios (excluir alquiler de ambos lados)
+  const totalAlquileres = activos.reduce((a,c)=>a+(c.monto||0),0);
+  const totalSoloServicios = totalGen - totalAlquileres;
   const totalBoletas = servs.filter(s=>s.periodo===mes).reduce((a,s)=>a+parseFloat(s.total||0),0);
-  const diff = Math.abs(totalGen - totalBoletas);
+  const diff = Math.abs(totalSoloServicios - totalBoletas);
   const verif = diff < 1
-    ? `<span style="color:var(--greentx)">✅ Los cobros cuadran con las boletas</span>`
+    ? `<span style="color:var(--greentx)">✅ Los servicios cobrados cuadran con las boletas</span>`
     : `<span style="color:#c0392b">⚠️ Diferencia de ${fmt(diff)} — revisá las boletas</span>`;
   h += `<div style="margin-top:.8rem;padding:12px 14px;background:var(--bg2);border-radius:var(--r);font-size:13px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
-    <span>🧾 <strong>Total cobrado a inquilinos:</strong> ${fmt(totalGen)}</span>
+    <span>🧾 <strong>Total alquileres:</strong> ${fmt(totalAlquileres)}</span>
+    <span>⚡ <strong>Total servicios cobrados:</strong> ${fmt(totalSoloServicios)}</span>
     <span>📄 <strong>Total boletas del mes:</strong> ${fmt(totalBoletas)}</span>
     <span>${verif}</span>
   </div>`;
