@@ -4503,7 +4503,16 @@ async function buildHDistrib() {
   // Buscar el servicio en datos_servicios
   const allDS = await getDatosServs();
   const cuenta = SERV_CUENTA_MAP[serv];
-  const ds = cuenta ? allDS.find(d=>d.cuenta===cuenta) : null;
+  // Buscar por cuenta + tipo (puede haber múltiples servicios con la misma cuenta)
+  const tipoParaServ = {'edenor1':'luz','edenor2':'luz','edenor3':'luz',
+    'aysa1':'agua','aysa2':'agua','gas1':'gas','gas2':'gas',
+    'claro':'internet','muni1':'municipal','muni2':'municipal'};
+  const tipoEsperado = tipoParaServ[serv] || null;
+  const ds = cuenta
+    ? (tipoEsperado
+        ? allDS.find(d=>d.cuenta===cuenta && d.tipo===tipoEsperado)
+        : allDS.find(d=>d.cuenta===cuenta))
+    : null;
 
   if (!ds) {
     blk.style.display = 'none';
