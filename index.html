@@ -1004,6 +1004,19 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
         <option value="propietario">🏠 Propietario (vive en el depto)</option>
       </select>
     </div>
+    <div class="fg" id="c-blk-vive" style="display:none">
+      <label>¿Vive actualmente en el depto?</label>
+      <div style="display:flex;gap:12px;align-items:center;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+          <input type="radio" name="c-vive" id="c-vive-si" value="si" checked> 
+          <span style="color:var(--greentx);font-weight:600">✅ Sí — incluir en servicios de consumo</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+          <input type="radio" name="c-vive" id="c-vive-no" value="no">
+          <span style="color:var(--redtx);font-weight:600">❌ No — solo ARBA y Municipal</span>
+        </label>
+      </div>
+    </div>
   </div>
   <div class="fg" style="margin-bottom:.8rem">
     <label>Persona *</label>
@@ -1677,12 +1690,20 @@ async function abrirCont(cont=null){
     const clausEl=document.getElementById('c-claus');if(clausEl)clausEl.value=cont.clausulas||'';
   }
   onRolCont();
+  // Cargar vive_actualmente para propietarios
+  if (cont?.rol === 'propietario') {
+    const viveVal = cont?.vive_actualmente || 'si';
+    const viveEl = document.getElementById('c-vive-' + viveVal);
+    if (viveEl) viveEl.checked = true;
+  }
   om('mo-cont');
 }
 function onRolCont(){
   const esProp=document.getElementById('c-rol')?.value==='propietario';
   const blk=document.getElementById('c-blk-inquilino');
   if(blk) blk.style.display=esProp?'none':'';
+  const blkVive=document.getElementById('c-blk-vive');
+  if(blkVive) blkVive.style.display=esProp?'':'none';
 }
 async function guardarCont(){
   const id=document.getElementById('c-id').value||uid();
@@ -1696,8 +1717,11 @@ async function guardarCont(){
   if(!dept_id||!inq_id){alert('Elegí departamento y persona (*)');return;}
   if(!esProp&&(!fecha_inicio||!monto)){alert('Completá fecha inicio y alquiler (*)');return;}
   const clausulas = document.getElementById('c-claus').value;
+  const viveActualmente = rol === 'propietario'
+    ? (document.querySelector('input[name="c-vive"]:checked')?.value || 'si')
+    : 'si';
   const c={
-    id, dept_id, inq_id, rol,
+    id, dept_id, inq_id, rol, vive_actualmente: viveActualmente,
     fecha_inicio: fecha_inicio || new Date().toISOString().slice(0,10),
     fecha_fin: fecha_fin || (esProp ? '2099-12-31' : fecha_inicio || new Date().toISOString().slice(0,10)),
     monto: esProp?0:monto,
@@ -1732,7 +1756,11 @@ async function renderConts(){
     <td><strong>${dept?dept.num:'?'}</strong></td>
     <td>${inq?inq.nombre+' '+inq.apellido:'?'}</td>
     <td>${fmtD(c.fecha_inicio)}</td><td>${fmtD(c.fecha_fin)}</td>
-    <td>${c.rol==='propietario'?'<span class="bdg blue">Propietario</span>':fmt(c.monto)}</td><td>${c.deposito?fmt(c.deposito):'—'}</td>
+    <td>${c.rol==='propietario'
+      ? '<span class="bdg blue">Propietario</span>' + (c.vive_actualmente==='no'
+        ? ' <span class="bdg red" style="font-size:10px">Ausente</span>'
+        : ' <span class="bdg green" style="font-size:10px">Presente</span>')
+      : fmt(c.monto)}</td><td>${c.deposito?fmt(c.deposito):'—'}</td>
     <td>${c.pct_aumento?c.pct_aumento+'% c/'+c.periodo_aumento+'m':'—'}</td>
     <td><span class="bdg ${b}">${t}</span></td>
     <td style="white-space:nowrap;display:flex;gap:3px">
@@ -2157,10 +2185,15 @@ async function renderCobros(){
     </td></tr>`;
   });
   // ── DEPARTAMENTOS VACÍOS — gastos a cargo de la administración ──
+  // Deptos sin contrato activo
   const deptosVacantes = depts.filter(d => {
     const tieneContrato = activos.find(c => c.dept_id === d.id);
     return !tieneContrato && d.num !== 'D1' && d.num !== 'D2' && d.num !== 'D3' && d.num !== 'D4';
   });
+  // Propietarios presentes en contratos pero marcados como ausentes
+  const propietariosAusentes = activos.filter(c =>
+    c.rol === 'propietario' && c.vive_actualmente === 'no'
+  );
 
   let totalAdmin = 0;
   if (deptosVacantes.length > 0) {
@@ -3443,15 +3476,19 @@ async function cargarInfoCuenta() {
     _cbDepts = todosLosDeptos; // medidor: lectura real por depto / único: depto fijo
     window._cbDeptosVacios = [];
   } else if (tipoReparto === 'fijo') {
-    // Cargo fijo (ARBA, Municipal): incluir TODOS aunque estén vacíos
+    // Cargo fijo (ARBA, Municipal): incluir TODOS aunque estén vacíos o ausentes
     _cbDepts = todosLosDeptos;
     window._cbDeptosVacios = [];
   } else {
-    // Por consumo (luz, gas, agua): solo deptos con contrato activo
+    // Por consumo: excluir deptos vacíos Y propietarios ausentes (vive_actualmente='no')
     const contsActivos = await getConts();
-    const idsActivos = new Set(contsActivos.filter(c=>c.estado==='activo').map(c=>c.dept_id));
-    const vacios = todosLosDeptos.filter(d=>!idsActivos.has(d.id));
-    _cbDepts = todosLosDeptos.filter(d=>idsActivos.has(d.id));
+    const idsActivos = new Set(
+      contsActivos
+        .filter(c => c.estado === 'activo' && c.vive_actualmente !== 'no')
+        .map(c => c.dept_id)
+    );
+    const vacios = todosLosDeptos.filter(d => !idsActivos.has(d.id));
+    _cbDepts = todosLosDeptos.filter(d => idsActivos.has(d.id));
     window._cbDeptosVacios = vacios;
   }
   const distribLabel = {medidor:'Por medidor individual (kWh)','partes-iguales':'Partes iguales',porcentaje:'Por porcentaje',unico:'Pago único (no se divide)'};
@@ -3710,7 +3747,12 @@ async function guardarBoleta() {
     deptosActivos = _cbDepts;
   } else {
     // Por consumo: solo deptos con contrato activo
-    deptosActivos = _cbDepts.filter(d => deptoIdsConContrato.has(d.id));
+    // Excluir también propietarios ausentes
+    const contsActivosConPresencia = conts.filter(c =>
+      c.estado === 'activo' && c.vive_actualmente !== 'no'
+    );
+    const idsConPresencia = new Set(contsActivosConPresencia.map(c => c.dept_id));
+    deptosActivos = _cbDepts.filter(d => idsConPresencia.has(d.id));
     const deptosVacios = _cbDepts.filter(d => !deptoIdsConContrato.has(d.id));
     if (deptosVacios.length > 0 && distrib !== 'medidor') {
       const nombres = deptosVacios.map(d => 'Depto ' + d.num).join(', ');
