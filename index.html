@@ -707,7 +707,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
   <div class="fg3">
     <div class="fg">
       <label>Servicio *</label>
-      <select id="h-serv">
+      <select id="h-serv" onchange="buildHDistrib()">
         <option value="edenor1">⚡ Edenor 1 (Cta.4855)</option>
         <option value="edenor2">⚡ Edenor 2 (Cta.6959)</option>
         <option value="edenor3">⚡ Edenor 3 (Cta.7966)</option>
@@ -742,7 +742,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
   <div class="fg3">
     <div class="fg">
       <label>Monto boleta ($) *</label>
-      <input id="h-monto" type="number" placeholder="0" min="0" step="0.01">
+      <input id="h-monto" type="number" placeholder="0" min="0" step="0.01" oninput="recalcHDistrib()">
     </div>
     <div class="fg">
       <label>Período facturación</label>
@@ -766,6 +766,32 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
       <label>Pagado por</label>
       <input id="h-pagador" type="text" placeholder="Ej: Camila, Mamá, Maxi...">
     </div>
+  </div>
+  <!-- DISTRIBUCIÓN -->
+  <div id="h-distrib-blk" style="display:none;margin-top:.5rem">
+    <div class="stl" style="margin-bottom:.5rem">Distribución entre departamentos</div>
+    <div id="h-distrib-tipo" style="font-size:12px;color:var(--tx2);margin-bottom:.5rem"></div>
+    <!-- kWh para luz -->
+    <div id="h-blk-kwh" style="display:none">
+      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:.5rem;padding:8px 12px;background:var(--bg2);border-radius:var(--r)">
+        <div class="fg" style="margin:0;max-width:160px">
+          <label style="font-size:11px">⚡ kWh TOTALES boleta</label>
+          <input id="h-kwh-total" type="number" placeholder="Ej: 1214" min="0" oninput="recalcHDistrib()">
+        </div>
+        <div style="font-size:12px;color:var(--tx2)" id="h-kwh-info"></div>
+      </div>
+      <div id="h-kwh-depts" style="display:flex;flex-direction:column;gap:6px"></div>
+      <div style="margin-top:.5rem;padding:6px 12px;background:var(--bg2);border-radius:var(--r);font-size:12px">
+        <strong>Bomba de agua</strong> — kWh restantes: <span id="h-bomba-kwh">0</span>
+        <div id="h-bomba-depts" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
+      </div>
+    </div>
+    <!-- Partes iguales / porcentaje -->
+    <div id="h-blk-pct" style="display:none">
+      <div id="h-pct-depts" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+    <!-- Resumen distribución -->
+    <div id="h-distrib-resumen" style="margin-top:.5rem;padding:6px 12px;background:var(--bg2);border-radius:var(--r);font-size:12px;color:var(--tx2)"></div>
   </div>
   <div class="mac">
     <button class="btn" onclick="cm('mo-historial')">Cancelar</button>
@@ -2624,7 +2650,9 @@ async function delHistorial(id) {
   }
 }
 
-function abrirHistorial(item=null) {
+async function abrirHistorial(item=null) {
+  _hDistribDepts = [];
+  _hDistribSvc = null;
   document.getElementById('h-id').value = item?.id || '';
   document.getElementById('h-serv').value = item?.servicio || 'edenor3';
   document.getElementById('h-vto-cobro').value = item?.vto_cobro || '';
@@ -2637,6 +2665,39 @@ function abrirHistorial(item=null) {
   document.getElementById('mo-hist-title').innerHTML = item
     ? '<i class="ti ti-edit"></i> Editar Boleta'
     : '<i class="ti ti-history"></i> Agregar Boleta al Historial';
+  await buildHDistrib();
+  // Load existing distribucion values if editing
+  if (item?.distribucion && _hDistribSvc) {
+    const esLuz = _hDistribSvc.tipo === 'luz' || _hDistribSvc.distrib === 'medidor';
+    if (esLuz) {
+      // Calculate total kWh from existing distribution
+      let totalKwh = 0;
+      Object.values(item.distribucion).forEach(v => { totalKwh += (v.kw||0); });
+      // Add bomba kWh from extras
+      Object.values(item.distribucion).forEach(v => {
+        (v.extras||[]).forEach(e => { if(e.concepto==='Bomba de agua') totalKwh += (e.monto/(item.monto/totalKwh||1))||0; });
+      });
+      if (document.getElementById('h-kwh-total')) {
+        // Estimate total kWh from monto and first dept ratio
+        const firstDist = Object.values(item.distribucion)[0];
+        if (firstDist?.kw && firstDist?.monto) {
+          const pxkw = firstDist.monto / firstDist.kw;
+          const estimatedTotal = Math.round(item.monto / pxkw);
+          document.getElementById('h-kwh-total').value = estimatedTotal;
+        }
+      }
+      Object.entries(item.distribucion).forEach(([deptId, val]) => {
+        const el = document.getElementById('h-kw-'+deptId);
+        if (el) el.value = val.kw || 0;
+      });
+    } else {
+      Object.entries(item.distribucion).forEach(([deptId, val]) => {
+        const el = document.getElementById('h-pct-'+deptId);
+        if (el) el.value = val.pct || 0;
+      });
+    }
+    recalcHDistrib();
+  }
   om('mo-historial');
 }
 
@@ -2664,6 +2725,10 @@ async function guardarHistorial() {
     }
     distribucion = nuevaDistrib;
   }
+  // Build distribucion from modal if available
+  const nuevaDistrib = buildHDistribObject();
+  const distribFinal = nuevaDistrib || distribucion;
+
   const h = {
     id,
     servicio: document.getElementById('h-serv').value,
@@ -2672,7 +2737,7 @@ async function guardarHistorial() {
     vto_cobro: document.getElementById('h-vto-cobro').value,
     vto_real: document.getElementById('h-vto-real').value || null,
     monto,
-    distribucion,
+    distribucion: distribFinal,
     metodo: original?.metodo || null,
     numero_boleta: original?.numero_boleta || null,
     periodo_fact: document.getElementById('h-periodo').value || null,
@@ -4411,6 +4476,177 @@ async function aplicarIPC() {
   renderConts();
   renderDash();
   alert(`✅ Alquiler actualizado a ${fmt(nuevo)} (+${pctTotal}%)`);
+}
+
+// ════════════════════════════════════════════════════
+//  DISTRIBUCIÓN EN MODAL HISTORIAL
+// ════════════════════════════════════════════════════
+
+// Mapa servicio → cuenta para buscar datos_servicios
+const SERV_CUENTA_MAP = {
+  edenor1:'5362664855', edenor2:'2301716959', edenor3:'8397487966',
+  aysa1:'1718948', aysa2:'1718951',
+  gas1:'222355/7', gas2:'222354/5',
+  claro:'21264378892', muni1:'430459/5', muni2:'430458/1'
+};
+
+let _hDistribDepts = [];    // deptos del servicio actual en modal historial
+let _hDistribSvc = null;    // datos_servicios del servicio actual
+let _hBombaDepts = [];      // deptos de la bomba
+
+async function buildHDistrib() {
+  const serv = document.getElementById('h-serv').value;
+  const blk = document.getElementById('h-distrib-blk');
+  const blkKwh = document.getElementById('h-blk-kwh');
+  const blkPct = document.getElementById('h-blk-pct');
+
+  // Buscar el servicio en datos_servicios
+  const allDS = await getDatosServs();
+  const cuenta = SERV_CUENTA_MAP[serv];
+  const ds = cuenta ? allDS.find(d=>d.cuenta===cuenta) : null;
+
+  if (!ds) {
+    blk.style.display = 'none';
+    return;
+  }
+
+  _hDistribSvc = ds;
+  const depts = await getDepts();
+  _hDistribDepts = (ds.dept_ids||[]).map(did=>depts.find(d=>d.id===did)).filter(Boolean);
+
+  if (!_hDistribDepts.length) { blk.style.display = 'none'; return; }
+
+  blk.style.display = '';
+  document.getElementById('h-distrib-tipo').textContent =
+    `${_hDistribDepts.map(d=>'Depto '+d.num).join(' · ')} — ${ds.distrib}`;
+
+  const esLuz = ds.tipo === 'luz' || ds.distrib === 'medidor';
+
+  blkKwh.style.display = esLuz ? '' : 'none';
+  blkPct.style.display = esLuz ? 'none' : '';
+
+  if (esLuz) {
+    // Build kWh inputs
+    let h = '';
+    _hDistribDepts.forEach(d => {
+      h += `<div style="display:flex;align-items:center;gap:8px">
+        <label style="width:80px;font-size:13px"><strong>Depto ${d.num}</strong></label>
+        <input id="h-kw-${d.id}" type="number" placeholder="kWh" min="0" step="0.1"
+          style="width:100px" oninput="recalcHDistrib()">
+        <span id="h-km-${d.id}" style="font-size:12px;color:var(--acc)">—</span>
+      </div>`;
+    });
+    document.getElementById('h-kwh-depts').innerHTML = h;
+
+    // Bomba depts
+    const bombaSvc = allDS.find(d=>d.tipo==='bomba');
+    _hBombaDepts = bombaSvc
+      ? (bombaSvc.dept_ids||[]).map(did=>depts.find(d=>d.id===did)).filter(Boolean)
+      : _hDistribDepts;
+    let hb = '';
+    _hBombaDepts.forEach(d => {
+      hb += `<label style="font-size:12px;display:flex;align-items:center;gap:4px;background:var(--bg2);padding:2px 8px;border-radius:20px;cursor:pointer">
+        <input type="checkbox" id="h-bomba-${d.id}" onchange="recalcHDistrib()"> Depto ${d.num}
+      </label>`;
+    });
+    document.getElementById('h-bomba-depts').innerHTML = hb;
+  } else {
+    // Build pct/igual inputs
+    let h = '';
+    _hDistribDepts.forEach(d => {
+      const pct = ds.pct_fijo?.[d.id] || (100/_hDistribDepts.length).toFixed(2);
+      h += `<div style="display:flex;align-items:center;gap:8px">
+        <label style="width:80px;font-size:13px"><strong>Depto ${d.num}</strong></label>
+        <input id="h-pct-${d.id}" type="number" placeholder="%" value="${pct}" min="0" max="100" step="0.01"
+          style="width:80px" oninput="recalcHDistrib()">
+        <span style="font-size:12px;color:var(--tx2)">%</span>
+        <span id="h-pm-${d.id}" style="font-size:12px;color:var(--acc)">—</span>
+      </div>`;
+    });
+    document.getElementById('h-pct-depts').innerHTML = h;
+  }
+
+  recalcHDistrib();
+}
+
+function recalcHDistrib() {
+  const monto = parseFloat(document.getElementById('h-monto').value)||0;
+  if (!monto || !_hDistribSvc) return;
+
+  const esLuz = _hDistribSvc.tipo === 'luz' || _hDistribSvc.distrib === 'medidor';
+  let resumen = '';
+
+  if (esLuz) {
+    const kwhTotal = parseFloat(document.getElementById('h-kwh-total').value)||0;
+    let kwhDeptos = 0;
+    _hDistribDepts.forEach(d => {
+      kwhDeptos += parseFloat(document.getElementById('h-kw-'+d.id)?.value||0);
+    });
+    const kwhBomba = Math.max(0, kwhTotal - kwhDeptos);
+    document.getElementById('h-bomba-kwh').textContent = kwhBomba.toFixed(1);
+    const pxkw = kwhTotal > 0 ? monto/kwhTotal : 0;
+    document.getElementById('h-kwh-info').textContent =
+      kwhTotal > 0 ? `Precio: $${pxkw.toFixed(2)}/kWh | kWh deptos: ${kwhDeptos} | Bomba: ${kwhBomba.toFixed(1)}` : '';
+
+    // Bomba per dept
+    const selBomba = _hBombaDepts.filter(d=>document.getElementById('h-bomba-'+d.id)?.checked);
+    const bombaM = kwhBomba * pxkw;
+    const bombaPerDept = selBomba.length > 0 ? bombaM/selBomba.length : 0;
+
+    let total = 0;
+    _hDistribDepts.forEach(d => {
+      const kw = parseFloat(document.getElementById('h-kw-'+d.id)?.value||0);
+      const m = Math.round(kw*pxkw + (selBomba.find(x=>x.id===d.id)?bombaPerDept:0));
+      const el = document.getElementById('h-km-'+d.id);
+      if (el) el.textContent = m > 0 ? '$'+m.toLocaleString('es-AR') : '—';
+      total += m;
+    });
+    resumen = `Total distribuido: $${total.toLocaleString('es-AR')} | Restante: $${Math.round(monto-total).toLocaleString('es-AR')}`;
+  } else {
+    let total = 0;
+    _hDistribDepts.forEach(d => {
+      const pct = parseFloat(document.getElementById('h-pct-'+d.id)?.value||0);
+      const m = Math.round(pct/100*monto);
+      const el = document.getElementById('h-pm-'+d.id);
+      if (el) el.textContent = m > 0 ? '$'+m.toLocaleString('es-AR') : '—';
+      total += m;
+    });
+    resumen = `Total distribuido: $${total.toLocaleString('es-AR')} | Restante: $${Math.round(monto-total).toLocaleString('es-AR')}`;
+  }
+  document.getElementById('h-distrib-resumen').textContent = resumen;
+}
+
+function buildHDistribObject() {
+  // Build distribucion object from modal inputs
+  if (!_hDistribSvc || !_hDistribDepts.length) return null;
+  const monto = parseFloat(document.getElementById('h-monto').value)||0;
+  const esLuz = _hDistribSvc.tipo === 'luz' || _hDistribSvc.distrib === 'medidor';
+  const distribucion = {};
+
+  if (esLuz) {
+    const kwhTotal = parseFloat(document.getElementById('h-kwh-total').value)||0;
+    const pxkw = kwhTotal > 0 ? monto/kwhTotal : 0;
+    let kwhDeptos = 0;
+    _hDistribDepts.forEach(d => { kwhDeptos += parseFloat(document.getElementById('h-kw-'+d.id)?.value||0); });
+    const kwhBomba = Math.max(0, kwhTotal - kwhDeptos);
+    const selBomba = _hBombaDepts.filter(d=>document.getElementById('h-bomba-'+d.id)?.checked);
+    const bombaM = kwhBomba * pxkw;
+    const bombaPerDept = selBomba.length > 0 ? bombaM/selBomba.length : 0;
+    _hDistribDepts.forEach(d => {
+      const kw = parseFloat(document.getElementById('h-kw-'+d.id)?.value||0);
+      const hasBomba = !!selBomba.find(x=>x.id===d.id);
+      const m = Math.round(kw*pxkw + (hasBomba?bombaPerDept:0));
+      const extras = hasBomba && bombaPerDept > 0 ? [{concepto:'Bomba de agua',monto:Math.round(bombaPerDept)}] : [];
+      distribucion[d.id] = {monto: m, kw, extras};
+    });
+  } else {
+    _hDistribDepts.forEach(d => {
+      const pct = parseFloat(document.getElementById('h-pct-'+d.id)?.value||0);
+      const m = Math.round(pct/100*monto);
+      distribucion[d.id] = {monto: m, pct};
+    });
+  }
+  return Object.keys(distribucion).length > 0 ? distribucion : null;
 }
 </script>
 </body>
