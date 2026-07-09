@@ -4555,7 +4555,7 @@ async function buildHDistrib() {
     let hb = '';
     _hBombaDepts.forEach(d => {
       hb += `<label style="font-size:12px;display:flex;align-items:center;gap:4px;background:var(--bg2);padding:2px 8px;border-radius:20px;cursor:pointer">
-        <input type="checkbox" id="h-bomba-${d.id}" onchange="recalcHDistrib()"> Depto ${d.num}
+        <input type="checkbox" id="h-bomba-${d.id}" checked onchange="recalcHDistrib()"> Depto ${d.num}
       </label>`;
     });
     document.getElementById('h-bomba-depts').innerHTML = hb;
