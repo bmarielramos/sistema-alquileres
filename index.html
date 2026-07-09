@@ -659,7 +659,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
           <option value="internet">🌐 Internet (genérico)</option>
           <option value="netflix">📺 Netflix</option>
           <option value="streaming">📺 Streaming (genérico)</option>
-          <option value="muni1">🏛️ ARBA (Cta.430459/5)</option>
+          <option value="muni1">🏙️ Municipal (Cta.430459/5)</option>
           <option value="muni2">🏛️ Muni Terreno (Cta.430458)</option>
           <option value="arba">📄 ARBA</option>
           <option value="municipal">🏙️ Municipal (genérico)</option>
@@ -723,7 +723,7 @@ label{font-size:12px;color:var(--tx2);display:block;margin-bottom:3px}
         <option value="internet">🌐 Internet (genérico)</option>
         <option value="netflix">📺 Netflix</option>
         <option value="streaming">📺 Streaming (genérico)</option>
-        <option value="muni1">🏛️ ARBA ABL (430459/5)</option>
+        <option value="muni1">🏛️ Municipal (430459/5)</option>
         <option value="muni2">🏛️ Muni Terreno (430458)</option>
         <option value="arba">📄 ARBA Inmobiliario</option>
         <option value="abl">🏛️ ABL / ARBA (genérico)</option>
@@ -1275,7 +1275,7 @@ async function getServs() {
     'edenor1':'luz','edenor2':'luz','edenor3':'luz',
     'aysa1':'agua','aysa2':'agua',
     'gas1':'gas','gas2':'gas',
-    'muni1':'abl','muni2':'municipal',
+    'muni1':'municipal','muni2':'municipal',
     'arba':'arba','claro':'internet','netflix':'streaming',
     'bomba':'bomba'
   };
@@ -2096,7 +2096,8 @@ async function renderCobros(){
       if(s.tipo==='luz'||s.tipo==='bomba')luz+=v;
       else if(s.tipo==='gas')gas+=v;
       else if(s.tipo==='agua')agua+=v;
-      else if(['abl','arba','abl_anual'].includes(s.tipo)||['muni1','arba'].includes(s.servicio))abl+=v;
+      else if(['abl','arba','abl_anual'].includes(s.tipo)||['arba'].includes(s.servicio))abl+=v;
+      else if(s.tipo==='municipal'||['muni1','muni2'].includes(s.servicio))mun+=v;
       else if(s.tipo==='municipal'||s.servicio==='muni2')mun+=v;
       else otros+=v; // internet, streaming, etc.
     });
@@ -2564,7 +2565,7 @@ const HIST_LABELS = {
   gas2:'🔥 Gas 2 - Naturgy (354/5)',
   claro:'🌐 Claro Internet',
   netflix:'📺 Netflix',
-  muni1:'🏛️ ARBA (430459/5)',
+  muni1:'🏙️ Municipal (430459/5)',
   muni2:'🏛️ Muni Terreno (430458)',
   arba:'📄 ARBA',
   luz:'⚡ Luz',
